@@ -152,7 +152,7 @@ void zenon::init()
 zenon::~zenon()
 {
 
-
+    zenon_cntr--;
     result = zeCommandListDestroy(command_list);
     if (result != ZE_RESULT_SUCCESS) {
         std::cout << "Failed to destroy command list" << '\n';
@@ -184,7 +184,7 @@ zenon::~zenon()
     }
 
 
-    if (ze_initalized)
+    if (ze_initalized && zenon_cntr == 0)
     {
         for (uint32_t i = 0; i < command_queue_count; i++)
             result = zeCommandQueueDestroy(command_queue);
