@@ -32,6 +32,7 @@ private:
 	std::mutex mtx;
 	bool logging;
 	bool fixed_distribution;
+	bool warm_up;
 	server serv;
 
 	void create_distribution()
@@ -72,13 +73,14 @@ private:
 	}
 
 public:
-	client(int _queries, int _qps, int zenon_pool_size, bool multi_ccs,bool fixed_dist, bool log = false) :
+	client(int _queries, int _qps, int zenon_pool_size, bool multi_ccs,bool fixed_dist,bool _warm_up, bool log = false) :
 		serv(zenon_pool_size,multi_ccs, log)
 	{
 		queries = _queries;
 		qps = _qps;
 		dist.resize(queries);
 		results.resize(queries);
+		warm_up = _warm_up;
 		logging = log;
 		fixed_distribution = fixed_dist;
 		create_distribution();
@@ -90,7 +92,8 @@ public:
 			print_dist();
 
 		// Warmup
-		run_single(0);
+		if (warm_up)
+			run_single(0);
 
 		high_resolution_clock::time_point start_time = high_resolution_clock::now();
 		std::thread** thread_pool = new std::thread*[queries];
