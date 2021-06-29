@@ -47,13 +47,6 @@ void print_help()
 
 int main(int argc, const char **argv) {
 
-    if (argc <= 1)
-    {
-        std::cout << "no arguments passed";
-        print_help();
-        return 1;
-    }
-
     for (int i = 0; i < argc; i++)
         std::cout << argv[i] << " ";
     std::cout << std::endl;
@@ -114,7 +107,6 @@ int main(int argc, const char **argv) {
             return 1;
         }
     }
-
 
     run_mt( queries, qps, consumers_count, multi_ccs, fixed_dist, warm_up, logging );
 
