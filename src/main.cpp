@@ -32,6 +32,8 @@ void check_caps()
 
 }
 
+extern bool verbose;
+
 void print_help()
 {
     std::cout << std::endl;
@@ -43,6 +45,7 @@ void print_help()
     std::cout << "--fixed_dist      - use fixed distribution list from file dist.txt" << std::endl;
     std::cout << "--log             - enable logging" << std::endl;
     std::cout << "--disable_wu      - disable warm up" << std::endl;
+    std::cout << "--verbose         - verbose" << std::endl;
 }
 
 int main(int argc, const char **argv) {
@@ -58,6 +61,8 @@ int main(int argc, const char **argv) {
     bool multi_ccs = true;
     bool fixed_dist = false;
     bool warm_up = true;
+    verbose = false;
+
 
     for( int i = 1; i < argc ; i++)
     {
@@ -95,6 +100,10 @@ int main(int argc, const char **argv) {
         else if( !strcmp( argv[ i ], "--disable_wu" ) )
         {
             warm_up = false;
+        }
+        else if( !strcmp( argv[ i ], "--verbose" ) )
+        {
+            verbose = true;
         }
         /*else if (!strcmp(argv[i], "--run_mt"))
         {

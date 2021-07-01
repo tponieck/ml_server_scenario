@@ -25,18 +25,24 @@
 #include <iomanip>
 #include "ze_info/offline_compiler.hpp"
 #include "ze_info/zenon.hpp"
+#include "ze_info/ze_utils.hpp"
+
+extern bool verbose;
+bool verbose = false;
 
 zenon::zenon(bool _log)
 {
     log = _log;
     input = new std::vector<uint8_t>(INPUT_SIZE, 0);
+    input2 = new std::vector<uint8_t>( INPUT_SIZE, 0 );
     output = new std::vector<uint8_t>(INPUT_SIZE, 0);
     init();
 }
 
-zenon::zenon(std::vector<uint8_t>* in, std::vector<uint8_t>* out)
+zenon::zenon( std::vector<uint8_t>* in, std::vector<uint8_t>* in2, std::vector<uint8_t>* out )
 {
     input = in;
+    input2 = in2;
     output = out;
     init();
 }
@@ -47,42 +53,23 @@ void zenon::init()
     {
         if (log)
             std::cout << "Initalization start\n";
-        result = zeInit(ZE_INIT_FLAG_GPU_ONLY);
-        if (result != ZE_RESULT_SUCCESS) {
-            std::cout << "Failed to initialize Level Zero" << '\n';
-        }
+        SUCCESS_OR_TERMINATE( zeInit( ZE_INIT_FLAG_GPU_ONLY ));
         ze_initalized = true;
-
-        result = zeDriverGet(&number_of_drivers, nullptr);
-        if (result != ZE_RESULT_SUCCESS) {
-            std::cout << "Failed to get number of availabile drivers" << '\n';
-        }
+        SUCCESS_OR_TERMINATE( zeDriverGet( &number_of_drivers, nullptr ));
 
         if (log)
             std::cout << "Number of drivers: " << number_of_drivers << std::endl;
 
         drivers.resize(number_of_drivers);
-        result = zeDriverGet(&number_of_drivers, drivers.data());
-        if (result != ZE_RESULT_SUCCESS) {
-            std::cout << "Failed to get drivers" << '\n';
-
-        }
+        SUCCESS_OR_TERMINATE(zeDriverGet(&number_of_drivers, drivers.data()));
         driver = drivers[0];
         context_descriptor.stype = ZE_STRUCTURE_TYPE_CONTEXT_DESC;
-        result = zeContextCreate(driver, &context_descriptor, &context);
-        if (result != ZE_RESULT_SUCCESS) {
-            std::cout << "Failed to create context" << '\n';
-        }
-        result = zeDeviceGet(driver, &number_of_devices, nullptr);
-        if (result != ZE_RESULT_SUCCESS) {
-            std::cout << "Failed to get number of availabile devices" << '\n';
-        }
+        SUCCESS_OR_TERMINATE(zeContextCreate(driver, &context_descriptor, &context));
+
+        SUCCESS_OR_TERMINATE(zeDeviceGet(driver, &number_of_devices, nullptr));
 
         devices.resize(number_of_devices);
-        result = zeDeviceGet(driver, &number_of_devices, devices.data());
-        if (result != ZE_RESULT_SUCCESS) {
-            std::cout << "Failed to get devices" << '\n';
-        }
+        SUCCESS_OR_TERMINATE(zeDeviceGet(driver, &number_of_devices, devices.data()));
         ze_device_properties_t device_properties;
         
         if (log)
@@ -103,7 +90,7 @@ void zenon::init()
                 {
                     if (log)
                     {
-                        std::cout << "Device is discreete!" << std::endl;
+                        std::cout << "Device is discrete!" << std::endl;
                     }
                     device = devices[d];
                     break;
@@ -143,62 +130,35 @@ void zenon::init()
         ccs_id = 0;
     command_queue_descriptor.index = ccs_id;
     
-    result = zeCommandQueueCreate(context, device, &command_queue_descriptor,
-            &command_queue);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to create command queue" << '\n';
-    }
+    SUCCESS_OR_TERMINATE(zeCommandQueueCreate(context, device, &command_queue_descriptor, &command_queue));
 }
 zenon::~zenon()
 {
 
     zenon_cntr--;
-    result = zeCommandListDestroy(command_list);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to destroy command list" << '\n';
-        return ;
-    }
+    SUCCESS_OR_TERMINATE(zeCommandListDestroy(command_list));
 
-    result = zeMemFree(context, output_buffer);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to free output buffer" << '\n';
-        return ;
-    }
+    SUCCESS_OR_TERMINATE( zeMemFree( context, output_buffer ) );
 
-    result = zeMemFree(context, input_buffer);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to free input buffer" << '\n';
-        return ;
-    }
+    SUCCESS_OR_TERMINATE( zeMemFree( context, input_buffer ) );
 
-    result = zeKernelDestroy(kernel);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to destroy kernel" << '\n';
-        return ;
-    }
+    SUCCESS_OR_TERMINATE(zeMemFree( context, input2_buffer ));
 
-    result = zeModuleDestroy(module);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to destroy module" << '\n';
-        return ;
-    }
+    SUCCESS_OR_TERMINATE(zeKernelDestroy( kernel ));
+
+    SUCCESS_OR_TERMINATE( zeModuleDestroy( module ) );
 
 
     if (ze_initalized && zenon_cntr == 0)
     {
+        SUCCESS_OR_TERMINATE( zeEventDestroy( *kernelTsEvent ));
+        SUCCESS_OR_TERMINATE( zeEventPoolDestroy( eventPool ));
+
         for (uint32_t i = 0; i < command_queue_count; i++)
-            result = zeCommandQueueDestroy(command_queue);
-        if (result != ZE_RESULT_SUCCESS) {
-            std::cout << "Failed to destroy command queue" << '\n';
-            return;
-        }
+            SUCCESS_OR_TERMINATE( zeCommandQueueDestroy(command_queue));
 
-        result = zeContextDestroy(context);
-        if (result != ZE_RESULT_SUCCESS) {
-            std::cout << "Failed to destroy context" << '\n';
-            return;
-        }
-
+        SUCCESS_OR_TERMINATE( zeContextDestroy( context ) );
+        
         ze_initalized = false;
     }
 
@@ -213,24 +173,21 @@ void zenon::create_module(const std::string& cl_file_path)
     module_descriptor.format = ZE_MODULE_FORMAT_IL_SPIRV;
     module_descriptor.inputSize = spirv.size();
     module_descriptor.pInputModule = spirv.data();
-    result =
-        zeModuleCreate(context, device, &module_descriptor, &module, nullptr);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to build module" << '\n';
-    }
+    SUCCESS_OR_TERMINATE( zeModuleCreate( context, device, &module_descriptor, &module, nullptr ) );
 
     kernel_descriptor.stype = ZE_STRUCTURE_TYPE_KERNEL_DESC;
     kernel_descriptor.pKernelName = "copy_buffer";
 
-    result = zeKernelCreate(module, &kernel_descriptor, &kernel);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to create kernel" << '\n';
-    }
+    SUCCESS_OR_TERMINATE( zeKernelCreate( module, &kernel_descriptor, &kernel ) );
+    
     kernel_descriptor.pKernelName = "heavy";
-    result = zeKernelCreate(module, &kernel_descriptor, &heavy_kernel);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to create heavy kernel" << '\n';
-    }
+    SUCCESS_OR_TERMINATE( zeKernelCreate( module, &kernel_descriptor, &heavy_kernel));
+
+    kernel_descriptor.pKernelName = "add_buffers";
+    SUCCESS_OR_TERMINATE( zeKernelCreate( module, &kernel_descriptor, &add_buffers_kernel ) );
+
+    kernel_descriptor.pKernelName = "mul_buffers";
+    SUCCESS_OR_TERMINATE( zeKernelCreate( module, &kernel_descriptor, &mul_buffers_kernel ) );
 
 }
 
@@ -240,144 +197,145 @@ void zenon::allocate_buffers()
     memory_descriptor.stype = ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC;
     memory_descriptor.ordinal = 0;
 
-    result = zeMemAllocDevice(context, &memory_descriptor,
-        sizeof(uint8_t) * input->size(), 1, device,
-        &input_buffer);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to create input buffer" << '\n';
-    }
+    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
+        sizeof( uint8_t ) * input->size(), 1, device,
+        &input_buffer ) );
+    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
+        sizeof( uint8_t ) * input->size(), 1, device,
+        &input2_buffer ) );
 
-    result = zeMemAllocDevice(context, &memory_descriptor,
+    SUCCESS_OR_TERMINATE( zeMemAllocDevice(context, &memory_descriptor,
         sizeof(uint8_t) * output->size(), 1, device,
-        &output_buffer);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to create output buffer" << '\n';
-    }
+        &output_buffer));
 
-    result = zeMemAllocDevice(context, &memory_descriptor,
-        sizeof(uint8_t) * output->size(), 1, device,
-        &im_buf1);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to create output buffer" << '\n';
-    }
+    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
+        sizeof( uint8_t ) * output->size(), 1, device,
+        &im_buf1 ) );
 
-    result = zeMemAllocDevice(context, &memory_descriptor,
-        sizeof(uint8_t) * output->size(), 1, device,
-        &im_buf2);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to create output buffer" << '\n';
-    }
+    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
+        sizeof( uint8_t ) * output->size(), 1, device,
+        &im_buf2 ) );
+    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
+        sizeof( uint8_t ) * output->size(), 1, device,
+        &im_buf3 ) );
+    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
+        sizeof( uint8_t ) * output->size(), 1, device,
+        &im_buf4 ) );
+
+    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
+        sizeof( uint8_t ) * output->size(), 1, device,
+        &im_buf5 ) );
+
+    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
+        sizeof( uint8_t ) * output->size(), 1, device,
+        &im_buf6 ) );
 
 }
 
-void zenon::submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel, void* input, void* output)
+void zenon::submit_kernel_to_cmd_list( ze_kernel_handle_t& _kernel, 
+    std::vector<void*> input, 
+    void* output, 
+    ze_event_handle_t output_event,
+    ze_event_handle_t* input_event, 
+    uint32_t input_event_count )
 {
-    result =
-        zeKernelSetArgumentValue(_kernel, 0, sizeof(input_buffer), &input);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to set input buffer as kernel argument" << '\n';
+    int param_cnt = 0;
+    for( int i = 0; i < input.size(); i++ )
+    {
+        SUCCESS_OR_TERMINATE( zeKernelSetArgumentValue( _kernel, param_cnt++, sizeof( input_buffer ), &input.at( i ) ));
     }
+    SUCCESS_OR_TERMINATE( zeKernelSetArgumentValue( _kernel, param_cnt++, sizeof( output_buffer ), &output ));
+    SUCCESS_OR_TERMINATE( zeCommandListAppendLaunchKernel( command_list, _kernel, &group_count,
+        output_event, input_event_count, input_event ) );
+    
+    //result = zeCommandListAppendBarrier( command_list, nullptr, 0, nullptr );
+    //if( result != ZE_RESULT_SUCCESS )
+    //{
+    //    std::cout << "Failed to append barrier" << '\n';
+    //}
 
-    result = zeKernelSetArgumentValue(_kernel, 1, sizeof(output_buffer), &output);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to set output buffer as kernel argument" << '\n';
-    }
+}
 
-    result = zeCommandListAppendLaunchKernel(command_list, _kernel, &group_count,
-        nullptr, 0, nullptr);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to append kernel launch" << '\n';
-    }
+void createEventPoolAndEvents( ze_context_handle_t& context,
+    ze_device_handle_t& device,
+    ze_event_pool_handle_t& eventPool,
+    ze_event_pool_flag_t poolFlag,
+    uint32_t poolSize,
+    ze_event_handle_t* events )
+{
+    ze_event_pool_desc_t eventPoolDesc;
+    ze_event_desc_t eventDesc;
+    eventPoolDesc.count = poolSize;
+    eventPoolDesc.flags = poolFlag;
+    SUCCESS_OR_TERMINATE(zeEventPoolCreate( context, &eventPoolDesc, 1, &device, &eventPool ));
 
-    result = zeCommandListAppendBarrier(command_list, nullptr, 0, nullptr);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to append barrier" << '\n';
+    for( uint32_t i = 0; i < poolSize; i++ )
+    {
+        eventDesc.index = i;
+        eventDesc.signal = ZE_EVENT_SCOPE_FLAG_DEVICE;
+        eventDesc.wait = ZE_EVENT_SCOPE_FLAG_DEVICE;
+        SUCCESS_OR_TERMINATE(zeEventCreate( eventPool, &eventDesc, events + i ));
     }
 }
 
 void zenon::create_cmd_list()
 {
+  //  ze_host_mem_alloc_desc_t hostDesc = {};
+   // hostDesc.flags = ZE_HOST_MEM_ALLOC_FLAG_BIAS_UNCACHED;
+   // void* timestampBuffer = nullptr;
+  //  zeMemAllocHost( context, &hostDesc, sizeof( ze_kernel_timestamp_result_t ), 1, &timestampBuffer );
+
+
     uint32_t group_size_x = 0;
     uint32_t group_size_y = 0;
     uint32_t group_size_z = 0;
-    result = zeKernelSuggestGroupSize(kernel, input->size(), 1U, 1U, &group_size_x,
-        &group_size_y, &group_size_z);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to set suggest kernel group size" << '\n';
-    }
-    result =
-        zeKernelSetGroupSize(kernel, group_size_x, group_size_y, group_size_z);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to set kernel group size" << '\n';
-    }
+    SUCCESS_OR_TERMINATE(zeKernelSuggestGroupSize(kernel, input->size(), 1U, 1U, &group_size_x, &group_size_y, &group_size_z ) );
+    SUCCESS_OR_TERMINATE(zeKernelSetGroupSize(kernel, group_size_x, group_size_y, group_size_z));
 
    
     command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
     command_list_descriptor.commandQueueGroupOrdinal = 0;
 
-    result = zeCommandListCreate(context, device, &command_list_descriptor,
-        &command_list);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to create command list" << '\n';
-    }
+    SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &command_list_descriptor, &command_list));
 
-    result = zeCommandListAppendMemoryCopy(
-        command_list, input_buffer, input->data(), sizeof(uint8_t) * input->size(),
-        nullptr, 0, nullptr);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to append memory copy to input buffer" << '\n';
-    }
+    SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy( command_list, input_buffer, input->data(), sizeof(uint8_t) * input->size(), nullptr, 0, nullptr));
 
-    result = zeCommandListAppendBarrier(command_list, nullptr, 0, nullptr);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to append barrier" << '\n';
-    }
+    SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy( command_list, input2_buffer, input2->data(), sizeof( uint8_t ) * input2->size(), nullptr, 0, nullptr ));
 
+    SUCCESS_OR_TERMINATE( zeCommandListAppendBarrier( command_list, nullptr, 0, nullptr ));
+
+    createEventPoolAndEvents( context, device, eventPool, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP, 5, &kernelTsEvent[0] );
     group_count.groupCountX = input->size() / group_size_x;
     group_count.groupCountY = 1;
     group_count.groupCountZ = 1;
 
-    submit_kernel_to_cmd_list(kernel, input_buffer, im_buf1);
-    submit_kernel_to_cmd_list(kernel, im_buf1, im_buf2);
-    submit_kernel_to_cmd_list(heavy_kernel, im_buf2, im_buf1);
-    submit_kernel_to_cmd_list(kernel, im_buf1, im_buf2);
-    submit_kernel_to_cmd_list(kernel, im_buf2, im_buf1);
-    submit_kernel_to_cmd_list(kernel, im_buf1, im_buf2);
-    submit_kernel_to_cmd_list(heavy_kernel, im_buf2, im_buf1);
-    submit_kernel_to_cmd_list(kernel, im_buf1, im_buf2);
-    submit_kernel_to_cmd_list(kernel, im_buf2, im_buf1);
-    submit_kernel_to_cmd_list(kernel, im_buf1, im_buf2);
-    submit_kernel_to_cmd_list(heavy_kernel, im_buf2, im_buf1);
-    submit_kernel_to_cmd_list(kernel, im_buf1, im_buf2);
-    submit_kernel_to_cmd_list(kernel, im_buf2, im_buf1);
-    submit_kernel_to_cmd_list(heavy_kernel, im_buf1, output_buffer);   
 
+    submit_kernel_to_cmd_list( add_buffers_kernel, { input_buffer, input2_buffer }, im_buf1, kernelTsEvent[2], &kernelTsEvent[0], 0 );
 
-    result = zeCommandListAppendMemoryCopy(
-        command_list, output->data(), output_buffer,
-        sizeof(uint8_t) * output->size(), nullptr, 0, nullptr);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to append memory copy from output buffer" << '\n';
-    }
-    result = zeCommandListClose(command_list);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to close command list" << '\n';
-    }
+    submit_kernel_to_cmd_list( add_buffers_kernel, { input_buffer, input2_buffer }, im_buf2, kernelTsEvent[2], &kernelTsEvent[1], 0);
 
+    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf3, kernelTsEvent[ 4 ], &kernelTsEvent[ 2 ], 0 );
+
+    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf4, kernelTsEvent[ 3 ], &kernelTsEvent[ 2 ], 0 );
+    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf5, kernelTsEvent[ 3 ], &kernelTsEvent[ 2 ], 0 );
+
+    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf4, im_buf5 }, im_buf6, kernelTsEvent[ 4 ], &kernelTsEvent[ 3 ], 0 );
+
+    submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf3, im_buf6 }, output_buffer, nullptr, &kernelTsEvent[ 4 ], 0 );
+
+    //zeCommandListAppendBarrier( command_list, kernelTsEvent, 0u, nullptr );
+    //zeCommandListAppendQueryKernelTimestamps( command_list, 1u, &kernelTsEvent, timestampBuffer, nullptr, nullptr, 0u, nullptr );
+
+    SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy( command_list, output->data(), output_buffer, sizeof(uint8_t) * output->size(), nullptr, 1, &kernelTsEvent[ 4 ] ));
+    SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
 }
 
 int zenon::run(uint32_t clinet_id)
 {
-    result = zeCommandQueueExecuteCommandLists(command_queue, 1, &command_list,
-        nullptr);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to execute command list" << '\n';
-    }
+    SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(command_queue, 1, &command_list, nullptr));
 
-    result = zeCommandQueueSynchronize(command_queue, UINT64_MAX);
-    if (result != ZE_RESULT_SUCCESS) {
-        std::cout << "Failed to synchronize command queue" << '\n';
-    }
+    SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(command_queue, UINT64_MAX));
+
     if (log) {
         std::cout << "Output:\n";
         for each (auto var in *output)

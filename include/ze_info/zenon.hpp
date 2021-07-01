@@ -23,7 +23,7 @@
 class zenon
 {
 public:
-    zenon(std::vector<uint8_t>* in, std::vector<uint8_t>* out);
+    zenon( std::vector<uint8_t>* in, std::vector<uint8_t>* in2, std::vector<uint8_t>* out );
     zenon(bool log = false);
     zenon(int _id, bool multi_ccs_enable, bool _log = false) : zenon(_log)
     {
@@ -35,11 +35,14 @@ public:
     void create_module(const std::string& cl_file_path = "module.cl");
     void allocate_buffers();
     void set_input(std::vector<uint8_t>&in) { input = &in; };
+    void set_input2( std::vector<uint8_t>& in2 ) { input2 = &in2; };
     void set_output(std::vector<uint8_t>& out) { output = &out;};
     std::vector<uint8_t>* get_input() { return input; };
+    std::vector<uint8_t>* get_input2() { return input2; };
     std::vector<uint8_t>* get_output() { return output; };
     void create_cmd_list();
-    void submit_kernel_to_cmd_list(ze_kernel_handle_t& kernel, void* input, void* output);
+    void submit_kernel_to_cmd_list( ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t input_events , ze_event_handle_t* output_event, uint32_t input_event_count );
+
     int run(uint32_t id);
     void init();
     int get_id() { return id; };
@@ -49,9 +52,10 @@ private:
 	static bool ze_initalized;
     bool log;
     bool multi_ccs = true;
-    void* input_buffer = nullptr, *output_buffer = nullptr, *im_buf1 = nullptr, *im_buf2 = nullptr ;
+    void* input_buffer = nullptr, *input2_buffer = nullptr, *output_buffer = nullptr, *im_buf1 = nullptr, *im_buf2 = nullptr, *im_buf3 = nullptr, * im_buf4 = nullptr, * im_buf5 = nullptr, * im_buf6 = nullptr;
 
     std::vector<uint8_t>* input;
+    std::vector<uint8_t>* input2;
     std::vector<uint8_t>* output;
     int id, ccs_id;
     ze_result_t result = ZE_RESULT_SUCCESS;
@@ -70,6 +74,8 @@ private:
     ze_kernel_desc_t kernel_descriptor = {};
     ze_kernel_handle_t kernel = nullptr;
     ze_kernel_handle_t heavy_kernel = nullptr;
+    ze_kernel_handle_t add_buffers_kernel = nullptr;
+    ze_kernel_handle_t mul_buffers_kernel = nullptr;
     ze_device_mem_alloc_desc_t memory_descriptor = {};
     ze_command_list_desc_t command_list_descriptor = {};
     ze_command_list_handle_t command_list = nullptr;
@@ -77,9 +83,10 @@ private:
     ze_command_queue_desc_t command_queue_descriptor = {};
     ze_command_queue_handle_t command_queue;
     static uint32_t command_queue_count, zenon_cntr;
-    
 
-   
+    ze_event_pool_handle_t eventPool;
+    ze_event_handle_t kernelTsEvent[5];
+    
 };
 
 #endif
