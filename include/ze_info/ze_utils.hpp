@@ -14,6 +14,36 @@
 #include "ze_api.h"
 #include "ze_info/utils.hpp"
 
+extern bool verbose;
+
+template <bool TerminateOnFailure, typename ResulT>
+inline void validate( ResulT result, const char* message )
+{
+    if( result == ZE_RESULT_SUCCESS )
+    {
+        if (verbose)
+            std::cerr << "SUCCESS : " << message << std::endl;
+        
+        return;
+    }
+
+    if( verbose )
+    {
+        std::cerr << ( TerminateOnFailure ? "ERROR : " : "WARNING : " ) << message << " : " << result
+            << std::endl;
+    }
+
+    if( TerminateOnFailure )
+    {
+        std::terminate();
+    }
+}
+
+#define SUCCESS_OR_TERMINATE(CALL) validate<true>(CALL, #CALL)
+#define SUCCESS_OR_TERMINATE_BOOL(FLAG) validate<true>(!(FLAG), #FLAG)
+#define SUCCESS_OR_WARNING(CALL) validate<false>(CALL, #CALL)
+#define SUCCESS_OR_WARNING_BOOL(FLAG) validate<false>(!(FLAG), #FLAG)
+
 
 std::string to_string(ze_result_t result);
 std::string to_string(ze_device_memory_property_flag_t flag);

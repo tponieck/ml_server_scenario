@@ -49,7 +49,9 @@ public:
 		std::shared_ptr<zenon> zenek = get_zenon_atomic();
 		int zen_id = zenek->get_id();
 		std::vector<uint8_t>* in = zenek->get_input();
+		std::vector<uint8_t>* in2 = zenek->get_input2();
 		std::fill(in->begin(), in->end(), id);
+		std::fill( in2->begin(), in2->end(), id - 1 );
 		zenek->run(id);
 		int ccs_id = zenek->get_ccs_id();
 		return_zenon_atomic(zenek);
