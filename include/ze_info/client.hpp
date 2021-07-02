@@ -46,8 +46,10 @@ private:
 					std::cout << "Reading dist from file" << std::endl;
 
 				// read the elements in the file into a vector  
+				int n = 0;
 				while (inputFile >> value) {
-					dist.push_back(std::chrono::milliseconds(value*1000));
+					dist[n] = std::chrono::milliseconds(value);
+					n++;
 				}
 				return;
 			}
