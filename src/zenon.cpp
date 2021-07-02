@@ -151,8 +151,8 @@ zenon::~zenon()
 
     if (ze_initalized && zenon_cntr == 0)
     {
-        SUCCESS_OR_TERMINATE( zeEventDestroy( *kernelTsEvent ));
-        SUCCESS_OR_TERMINATE( zeEventPoolDestroy( eventPool ));
+        SUCCESS_OR_TERMINATE( zeEventDestroy( *kernel_ts_event ));
+        SUCCESS_OR_TERMINATE( zeEventPoolDestroy( event_pool ));
 
         for (uint32_t i = 0; i < command_queue_count; i++)
             SUCCESS_OR_TERMINATE( zeCommandQueueDestroy(command_queue));
@@ -236,7 +236,7 @@ void zenon::submit_kernel_to_cmd_list( ze_kernel_handle_t& _kernel,
     std::vector<void*> input, 
     void* output, 
     ze_event_handle_t output_event,
-    ze_event_handle_t* input_event, 
+    std::vector<ze_event_handle_t*> input_events, 
     uint32_t input_event_count )
 {
     int param_cnt = 0;
@@ -246,7 +246,7 @@ void zenon::submit_kernel_to_cmd_list( ze_kernel_handle_t& _kernel,
     }
     SUCCESS_OR_TERMINATE( zeKernelSetArgumentValue( _kernel, param_cnt++, sizeof( output_buffer ), &output ));
     SUCCESS_OR_TERMINATE( zeCommandListAppendLaunchKernel( command_list, _kernel, &group_count,
-        output_event, input_event_count, input_event ) );
+        output_event, input_event_count, input_events.at( 0 )) );
     
     //result = zeCommandListAppendBarrier( command_list, nullptr, 0, nullptr );
     //if( result != ZE_RESULT_SUCCESS )
@@ -304,29 +304,27 @@ void zenon::create_cmd_list()
 
     SUCCESS_OR_TERMINATE( zeCommandListAppendBarrier( command_list, nullptr, 0, nullptr ));
 
-    createEventPoolAndEvents( context, device, eventPool, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP, 5, &kernelTsEvent[0] );
+    createEventPoolAndEvents( context, device, event_pool, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP, MAX_EVENTS_COUNT, &kernel_ts_event[0] );
     group_count.groupCountX = input->size() / group_size_x;
     group_count.groupCountY = 1;
     group_count.groupCountZ = 1;
+    
+    submit_kernel_to_cmd_list( add_buffers_kernel, { input_buffer, input2_buffer }, im_buf1, kernel_ts_event[ 0 ], { nullptr }, 0 );
 
+    submit_kernel_to_cmd_list( add_buffers_kernel, { input_buffer, input2_buffer }, im_buf2, kernel_ts_event[ 1 ], { nullptr }, 0 );
+    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf3, kernel_ts_event[ 2 ], { &kernel_ts_event[0], &kernel_ts_event[1] }, 2 );
 
-    submit_kernel_to_cmd_list( add_buffers_kernel, { input_buffer, input2_buffer }, im_buf1, kernelTsEvent[2], &kernelTsEvent[0], 0 );
+    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf4, kernel_ts_event[ 3 ], { &kernel_ts_event[ 0 ], &kernel_ts_event[ 1 ] }, 2 );
+    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf5, kernel_ts_event[ 4 ], { &kernel_ts_event[ 0 ], &kernel_ts_event[ 1 ] }, 2 );
 
-    submit_kernel_to_cmd_list( add_buffers_kernel, { input_buffer, input2_buffer }, im_buf2, kernelTsEvent[2], &kernelTsEvent[1], 0);
+    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf4, im_buf5 }, im_buf6, kernel_ts_event[ 5 ], { &kernel_ts_event[ 3 ], &kernel_ts_event[ 4 ] }, 2 );
 
-    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf3, kernelTsEvent[ 4 ], &kernelTsEvent[ 2 ], 0 );
-
-    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf4, kernelTsEvent[ 3 ], &kernelTsEvent[ 2 ], 0 );
-    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf5, kernelTsEvent[ 3 ], &kernelTsEvent[ 2 ], 0 );
-
-    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf4, im_buf5 }, im_buf6, kernelTsEvent[ 4 ], &kernelTsEvent[ 3 ], 0 );
-
-    submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf3, im_buf6 }, output_buffer, nullptr, &kernelTsEvent[ 4 ], 0 );
-
+    submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf3, im_buf6 }, output_buffer, nullptr, { &kernel_ts_event[ 2 ], &kernel_ts_event[ 5 ] }, 2 );
+    
     //zeCommandListAppendBarrier( command_list, kernelTsEvent, 0u, nullptr );
     //zeCommandListAppendQueryKernelTimestamps( command_list, 1u, &kernelTsEvent, timestampBuffer, nullptr, nullptr, 0u, nullptr );
 
-    SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy( command_list, output->data(), output_buffer, sizeof(uint8_t) * output->size(), nullptr, 1, &kernelTsEvent[ 4 ] ));
+    SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy( command_list, output->data(), output_buffer, sizeof(uint8_t) * output->size(), nullptr, 1, &kernel_ts_event[ 5 ] ));
     SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
 }
 

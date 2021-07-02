@@ -20,6 +20,8 @@
 #include "ze_info/offline_compiler.hpp"
 #include "ze_info/utils.hpp"
 
+#define MAX_EVENTS_COUNT 50
+
 class zenon
 {
 public:
@@ -41,7 +43,7 @@ public:
     std::vector<uint8_t>* get_input2() { return input2; };
     std::vector<uint8_t>* get_output() { return output; };
     void create_cmd_list();
-    void submit_kernel_to_cmd_list( ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t input_events , ze_event_handle_t* output_event, uint32_t input_event_count );
+    void submit_kernel_to_cmd_list( ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t output_event, std::vector<ze_event_handle_t*> input_events, uint32_t input_event_count );
 
     int run(uint32_t id);
     void init();
@@ -84,9 +86,8 @@ private:
     ze_command_queue_handle_t command_queue;
     static uint32_t command_queue_count, zenon_cntr;
 
-    ze_event_pool_handle_t eventPool;
-    ze_event_handle_t kernelTsEvent[5];
-    
+    ze_event_pool_handle_t event_pool;
+    ze_event_handle_t kernel_ts_event[ MAX_EVENTS_COUNT ];
 };
 
 #endif
