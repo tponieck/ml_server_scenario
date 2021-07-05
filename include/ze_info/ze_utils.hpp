@@ -10,6 +10,7 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 
 #include "ze_api.h"
 #include "ze_info/utils.hpp"
