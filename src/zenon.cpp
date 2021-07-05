@@ -336,7 +336,7 @@ int zenon::run(uint32_t clinet_id)
 
     if (log) {
         std::cout << "Output:\n";
-        for each (auto var in *output)
+        for  (auto var : *output)
         {
             std::cout << (int)var << " ";
         }

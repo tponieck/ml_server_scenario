@@ -12,6 +12,7 @@
 #include "ze_api.h"
 
 #include <vector>
+#include <cstring>
 
 
 
