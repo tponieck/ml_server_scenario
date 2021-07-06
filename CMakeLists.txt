@@ -13,6 +13,7 @@ project(snowBox)
 
 # set paths
 set(L0_PATH ${CMAKE_SOURCE_DIR}/level_zero)
+set(L0_PATH ${CMAKE_SOURCE_DIR}/level_zero)
 set(L0_INCLUDE ${L0_PATH}/include/level_zero)
 set(SRC_PATH ${CMAKE_SOURCE_DIR}/src)
 set(SRC_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/include)
@@ -25,7 +26,7 @@ set(MAIN_SRC  ${CMAKE_SOURCE_DIR}/src/main.cpp)
 
 file(GLOB_RECURSE SRC_FILES
     "${SRC_PATH}/*.cpp"
-    "${SRC_PATH}/*.hpp"
+    "${SRC_INCLUDE_PATH}/ze_info/*.hpp"
 )
 
 # include libraries
