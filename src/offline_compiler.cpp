@@ -35,7 +35,7 @@
         const std::string device = "skl";
 
         std::vector<const char*> args = {
-            "ocloc",   "compile",        "-device",   device.c_str(),
+            "ocloc",   "-q", "compile",  "-device",   device.c_str(),
             "-file",   src_file.c_str(), "-options",  build_options.c_str(),
             "-output", spv_file.c_str(), "-spv_only", "-output_no_suffix",
         };
