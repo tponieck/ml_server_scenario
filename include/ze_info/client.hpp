@@ -38,23 +38,33 @@ private:
 	void create_distribution()
 	{
 		long long value;
+		std::string filename = "./dist_" + std::to_string( queries ) + ".txt";
 		if (fixed_distribution)
 		{
-			std::ifstream inputFile("./dist.txt");
+			std::ifstream inputFile(filename);
 			if (inputFile) {
 				if (logging)
 					std::cout << "Reading dist from file" << std::endl;
 
+				bool file_correct = true;
+
 				// read the elements in the file into a vector  
 				int n = 0;
 				while (inputFile >> value) {
+					if( n >= queries )
+					{
+						std::cout << "File is too long." << std::endl;
+						file_correct = false;
+						break;
+					}
 					dist[n] = std::chrono::milliseconds(value);
 					n++;
 				}
-				return;
+				if ( file_correct )
+					return;
 			}
 			if (logging)
-				std::cout << "Fixed distribution selected, file not found." << std::endl;
+				std::cout << "Fixed distribution selected, correct file not found." << std::endl;
 
 		}
 		std::random_device rd;
@@ -66,7 +76,7 @@ private:
 		{
 			if (logging)
 				std::cout << "Generating dist file" << std::endl;
-			std::ofstream outfile("./dist.txt");
+			std::ofstream outfile(filename);
 			for (int n = 0; n < dist.size(); ++n)
 				outfile << (long long) dist[n].count()<< " ";
 
