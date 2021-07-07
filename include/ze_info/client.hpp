@@ -47,7 +47,7 @@ private:
 
 				// read the elements in the file into a vector  
 				int n = 0;
-				while (inputFile >> value) {
+				while (inputFile >> value && n < queries) {
 					dist[n] = std::chrono::milliseconds(value);
 					n++;
 				}
