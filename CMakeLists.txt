@@ -57,12 +57,12 @@ if(LINUX)
 
 else()
  add_custom_command(TARGET "${APP_NAME}" POST_BUILD
-      COMMAND if $<CONFIG:Debug> neq 0 ("${CMAKE_COMMAND}" -E copy_if_different "${KERNELS_PATH}/module.cl" "${CMAKE_SOURCE_DIR}/Debug/")
-      COMMAND if $<CONFIG:Debug> neq 0 ("${CMAKE_COMMAND}" -E copy_if_different "${DLLS_PATH}/tbb12_debug.dll" "${CMAKE_SOURCE_DIR}/Debug/")
-      COMMAND if $<CONFIG:Debug> neq 0 ("${CMAKE_COMMAND}" -E copy_if_different "${DLLS_PATH}/ocloc64.dll" "${CMAKE_SOURCE_DIR}/Debug/")
-      COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -E copy_if_different "${KERNELS_PATH}/module.cl" "${CMAKE_SOURCE_DIR}/Release/")
-      COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -E copy_if_different "${DLLS_PATH}/tbb12.dll" "${CMAKE_SOURCE_DIR}/Release/")
-      COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -E copy_if_different "${DLLS_PATH}/ocloc64.dll" "${CMAKE_SOURCE_DIR}/Release/")
+      COMMAND if $<CONFIG:Debug> neq 0 ("${CMAKE_COMMAND}" -E copy_if_different "${KERNELS_PATH}/module.cl" "${CMAKE_BINARY_DIR}/Debug/")
+      COMMAND if $<CONFIG:Debug> neq 0 ("${CMAKE_COMMAND}" -E copy_if_different "${DLLS_PATH}/tbb12_debug.dll" "${CMAKE_BINARY_DIR}/Debug/")
+      COMMAND if $<CONFIG:Debug> neq 0 ("${CMAKE_COMMAND}" -E copy_if_different "${DLLS_PATH}/ocloc64.dll" "${CMAKE_BINARY_DIR}/Debug/")
+      COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -E copy_if_different "${KERNELS_PATH}/module.cl" "${CMAKE_BINARY_DIR}/Release/")
+      COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -E copy_if_different "${DLLS_PATH}/tbb12.dll" "${CMAKE_BINARY_DIR}/Release/")
+      COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -E copy_if_different "${DLLS_PATH}/ocloc64.dll" "${CMAKE_BINARY_DIR}/Release/")
       COMMENT "Copying Kernels to output..."
     )
 endif()
