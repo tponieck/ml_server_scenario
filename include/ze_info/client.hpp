@@ -60,9 +60,8 @@ private:
 		std::random_device rd;
 		std::mt19937 gen(rd());
 		std::exponential_distribution<> d(qps);
-		long long gen_value = d(gen) * 1000;
 		for (int n = 0; n < queries; ++n)
-            dist[ n ] = std::chrono::milliseconds( gen_value );
+			dist[ n ] = std::chrono::milliseconds( long long( d( gen ) * 1000 ) );
 		if (fixed_distribution)
 		{
 			if (logging)
