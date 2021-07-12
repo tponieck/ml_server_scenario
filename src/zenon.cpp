@@ -27,8 +27,9 @@
 #include "ze_info/zenon.hpp"
 #include "ze_info/ze_utils.hpp"
 
-extern bool verbose;
+extern bool verbose, profiling;
 bool verbose = false;
+bool profiling = false;
 
 zenon::zenon(bool _log)
 {
@@ -247,13 +248,15 @@ void zenon::submit_kernel_to_cmd_list( ze_kernel_handle_t& _kernel,
     SUCCESS_OR_TERMINATE( zeKernelSetArgumentValue( _kernel, param_cnt++, sizeof( output_buffer ), &output ));
     SUCCESS_OR_TERMINATE( zeCommandListAppendLaunchKernel( command_list, _kernel, &group_count,
         output_event, input_event_count, input_events.at( 0 )) );
-    
-    //result = zeCommandListAppendBarrier( command_list, nullptr, 0, nullptr );
-    //if( result != ZE_RESULT_SUCCESS )
-    //{
-    //    std::cout << "Failed to append barrier" << '\n';
-    //}
-
+    graph_event_count++;
+    if( profiling )
+    {
+        size_t kernel_name_length = 0;
+        SUCCESS_OR_TERMINATE( zeKernelGetName( _kernel, &kernel_name_length, nullptr ) );
+        char* kernel_name = new char[ kernel_name_length ];
+        SUCCESS_OR_TERMINATE( zeKernelGetName( _kernel, &kernel_name_length, kernel_name ) );
+        kernel_names.push_back( kernel_name );
+    }
 }
 
 void createEventPoolAndEvents( ze_context_handle_t& context,
@@ -280,19 +283,12 @@ void createEventPoolAndEvents( ze_context_handle_t& context,
 
 void zenon::create_cmd_list()
 {
-  //  ze_host_mem_alloc_desc_t hostDesc = {};
-   // hostDesc.flags = ZE_HOST_MEM_ALLOC_FLAG_BIAS_UNCACHED;
-   // void* timestampBuffer = nullptr;
-  //  zeMemAllocHost( context, &hostDesc, sizeof( ze_kernel_timestamp_result_t ), 1, &timestampBuffer );
-
-
     uint32_t group_size_x = 0;
     uint32_t group_size_y = 0;
     uint32_t group_size_z = 0;
     SUCCESS_OR_TERMINATE(zeKernelSuggestGroupSize(kernel, input->size(), 1U, 1U, &group_size_x, &group_size_y, &group_size_z ) );
     SUCCESS_OR_TERMINATE(zeKernelSetGroupSize(kernel, group_size_x, group_size_y, group_size_z));
 
-   
     command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
     command_list_descriptor.commandQueueGroupOrdinal = 0;
 
@@ -308,10 +304,12 @@ void zenon::create_cmd_list()
     group_count.groupCountX = input->size() / group_size_x;
     group_count.groupCountY = 1;
     group_count.groupCountZ = 1;
+
+    kernel_names.clear();
     
     submit_kernel_to_cmd_list( add_buffers_kernel, { input_buffer, input2_buffer }, im_buf1, kernel_ts_event[ 0 ], { nullptr }, 0 );
-
     submit_kernel_to_cmd_list( add_buffers_kernel, { input_buffer, input2_buffer }, im_buf2, kernel_ts_event[ 1 ], { nullptr }, 0 );
+
     submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf3, kernel_ts_event[ 2 ], { &kernel_ts_event[0], &kernel_ts_event[1] }, 2 );
 
     submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf4, kernel_ts_event[ 3 ], { &kernel_ts_event[ 0 ], &kernel_ts_event[ 1 ] }, 2 );
@@ -319,21 +317,36 @@ void zenon::create_cmd_list()
 
     submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf4, im_buf5 }, im_buf6, kernel_ts_event[ 5 ], { &kernel_ts_event[ 3 ], &kernel_ts_event[ 4 ] }, 2 );
 
-    submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf3, im_buf6 }, output_buffer, nullptr, { &kernel_ts_event[ 2 ], &kernel_ts_event[ 5 ] }, 2 );
+    submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf3, im_buf6 }, output_buffer, kernel_ts_event[ 6 ], { &kernel_ts_event[ 2 ], &kernel_ts_event[ 5 ] }, 2 );
     
-    //zeCommandListAppendBarrier( command_list, kernelTsEvent, 0u, nullptr );
-    //zeCommandListAppendQueryKernelTimestamps( command_list, 1u, &kernelTsEvent, timestampBuffer, nullptr, nullptr, 0u, nullptr );
-
-    SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy( command_list, output->data(), output_buffer, sizeof(uint8_t) * output->size(), nullptr, 1, &kernel_ts_event[ 5 ] ));
+    SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy( command_list, output->data(), output_buffer, sizeof(uint8_t) * output->size(), nullptr, 1, &kernel_ts_event[ 6 ] ));
     SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
 }
 
-int zenon::run(uint32_t clinet_id)
+gpu_results zenon::run(uint32_t clinet_id)
 {
     SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(command_queue, 1, &command_list, nullptr));
-
     SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(command_queue, UINT64_MAX));
 
+    if( profiling )
+    {
+        ze_device_properties_t devProperties = { ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES };
+        SUCCESS_OR_TERMINATE( zeDeviceGetProperties( device, &devProperties ) );
+
+        gpu_result.kernel_time.clear();
+        gpu_result.execuction_time = 0;
+        uint64_t timerResolution = devProperties.timerResolution;
+        uint64_t kernelDuration = 0;
+        for( int i = 0; i < graph_event_count; i++ )
+        {
+            SUCCESS_OR_TERMINATE( zeEventQueryKernelTimestamp( kernel_ts_event[ i ], &kernel_ts_results[ i ] ) );
+            kernelDuration = ( kernel_ts_results[ i ].context.kernelEnd - kernel_ts_results[ i ].context.kernelStart ) * timerResolution;
+            gpu_result.kernel_time.push_back( kernelDuration );
+            gpu_result.execuction_time += kernelDuration;
+        }
+        gpu_result.kernel_name = kernel_names;
+    }
+    
     if (log) {
         std::cout << "Output:\n";
         for  (auto var : *output)
@@ -342,7 +355,7 @@ int zenon::run(uint32_t clinet_id)
         }
         std::cout << std::endl;
     }
-    return 0;
+    return gpu_result;
 }
 
 bool zenon::ze_initalized = false;

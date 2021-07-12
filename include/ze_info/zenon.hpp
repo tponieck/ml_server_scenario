@@ -22,43 +22,51 @@
 
 #define MAX_EVENTS_COUNT 50
 
+struct gpu_results
+{
+    std::vector<uint64_t> kernel_time;
+    std::vector<std::string>  kernel_name;
+    uint64_t execuction_time = 0;
+};
+
 class zenon
 {
 public:
     zenon( std::vector<uint8_t>* in, std::vector<uint8_t>* in2, std::vector<uint8_t>* out );
-    zenon(bool log = false);
-    zenon(int _id, bool multi_ccs_enable, bool _log = false) : zenon(_log)
+    zenon( bool log = false );
+    zenon( int _id, bool multi_ccs_enable, bool _log = false ) : zenon( _log )
     {
         multi_ccs = multi_ccs_enable;
         id = _id;
         log = _log;
     }
     ~zenon();
-    void create_module(const std::string& cl_file_path = "module.cl");
+    void create_module( const std::string& cl_file_path = "module.cl" );
     void allocate_buffers();
-    void set_input(std::vector<uint8_t>&in) { input = &in; };
+    void set_input( std::vector<uint8_t>& in ) { input = &in; };
     void set_input2( std::vector<uint8_t>& in2 ) { input2 = &in2; };
-    void set_output(std::vector<uint8_t>& out) { output = &out;};
+    void set_output( std::vector<uint8_t>& out ) { output = &out; };
     std::vector<uint8_t>* get_input() { return input; };
     std::vector<uint8_t>* get_input2() { return input2; };
     std::vector<uint8_t>* get_output() { return output; };
     void create_cmd_list();
     void submit_kernel_to_cmd_list( ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t output_event, std::vector<ze_event_handle_t*> input_events, uint32_t input_event_count );
 
-    int run(uint32_t id);
+    gpu_results run( uint32_t id );
     void init();
     int get_id() { return id; };
     int get_ccs_id() { return ccs_id; };
 
 private:
-	static bool ze_initalized;
+    static bool ze_initalized;
     bool log;
     bool multi_ccs = true;
-    void* input_buffer = nullptr, *input2_buffer = nullptr, *output_buffer = nullptr, *im_buf1 = nullptr, *im_buf2 = nullptr, *im_buf3 = nullptr, * im_buf4 = nullptr, * im_buf5 = nullptr, * im_buf6 = nullptr;
+    void* input_buffer = nullptr, * input2_buffer = nullptr, * output_buffer = nullptr, * im_buf1 = nullptr, * im_buf2 = nullptr, * im_buf3 = nullptr, * im_buf4 = nullptr, * im_buf5 = nullptr, * im_buf6 = nullptr;
 
     std::vector<uint8_t>* input;
     std::vector<uint8_t>* input2;
     std::vector<uint8_t>* output;
+    gpu_results gpu_result;
     int id, ccs_id;
     ze_result_t result = ZE_RESULT_SUCCESS;
     uint32_t number_of_drivers = 0;
@@ -88,6 +96,9 @@ private:
 
     ze_event_pool_handle_t event_pool;
     ze_event_handle_t kernel_ts_event[ MAX_EVENTS_COUNT ];
+    ze_kernel_timestamp_result_t kernel_ts_results[ MAX_EVENTS_COUNT ];
+    uint32_t graph_event_count = 0;
+    std::vector<std::string> kernel_names;
 };
 
 #endif
