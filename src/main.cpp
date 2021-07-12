@@ -34,6 +34,7 @@ void check_caps()
 }
 
 extern bool verbose;
+extern bool profiling;
 
 void print_help()
 {
@@ -47,6 +48,7 @@ void print_help()
     std::cout << "--log             - enable logging" << std::endl;
     std::cout << "--disable_wu      - disable warm up" << std::endl;
     std::cout << "--verbose         - verbose" << std::endl;
+    std::cout << "--profiling       - gpu kernel stats" << std::endl;
 }
 
 int main(int argc, const char **argv) {
@@ -62,6 +64,7 @@ int main(int argc, const char **argv) {
     bool multi_ccs = true;
     bool fixed_dist = false;
     bool warm_up = true;
+    profiling = false;
     verbose = false;
 
 
@@ -105,6 +108,10 @@ int main(int argc, const char **argv) {
         else if( !strcmp( argv[ i ], "--verbose" ) )
         {
             verbose = true;
+        }
+        else if( !strcmp( argv[ i ], "--profiling" ) )
+        {
+            profiling = true;
         }
         /*else if (!strcmp(argv[i], "--run_mt"))
         {
