@@ -124,6 +124,7 @@ public:
             delete thread_pool[ i ];
         }
         print_results();
+        serv.delete_zenek();
     }
 
     void run_single( int qid )
