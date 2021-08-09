@@ -46,6 +46,7 @@ public:
     void set_input( std::vector<uint8_t>& in ) { input = &in; };
     void set_input2( std::vector<uint8_t>& in2 ) { input2 = &in2; };
     void set_output( std::vector<uint8_t>& out ) { output = &out; };
+    void set_id(int _id) { id = _id; };
     std::vector<uint8_t>* get_input() { return input; };
     std::vector<uint8_t>* get_input2() { return input2; };
     std::vector<uint8_t>* get_output() { return output; };

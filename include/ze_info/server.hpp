@@ -18,6 +18,7 @@
 #include <algorithm>
 #include "ze_info/zenon.hpp"
 #include <memory>
+#include "boost/lockfree/queue.hpp"
 #include "tbb/concurrent_queue.h"
 
 class server
@@ -27,26 +28,21 @@ public:
         log_lock( mtx, std::defer_lock ),
         logging( log )
     {
-        zenek_pool_size = pool_size;
+        zenek.reserve(pool_size);
+        zenek_pool_boost.reserve(pool_size);
         for( int i = 0; i < pool_size; i++ )
-        {
-            std::shared_ptr<zenon> zenek = std::make_shared<zenon>( i, multi_ccs, log );
-
-            //    zenon zen_copy = *zenek;
-
-
-            zenek->create_module();
-            zenek->allocate_buffers();
-            zenek->create_cmd_list();
-
-            //    zen_copy.create_module();
-            zenek_pool_tbb.push( zenek );
+        {            
+            zenek[i] = new zenon(i, multi_ccs, log);
+            zenek[i]->create_module();
+            zenek[i]->allocate_buffers();
+            zenek[i]->create_cmd_list();
+            zenek_pool_boost.push(zenek[i]);
         }
     }
 
     gpu_results query_sample( int id )
     {
-        std::shared_ptr<zenon> zenek = get_zenon_atomic();
+        zenon * zenek = get_zenon_atomic();
         int zen_id = zenek->get_id();
         std::vector<uint8_t>* in = zenek->get_input();
         std::vector<uint8_t>* in2 = zenek->get_input2();
@@ -61,14 +57,24 @@ public:
         return gpu_result;
     }
 
+    void delete_zenek() 
+    {
+        for (int i = 1; i < zenek_pool_size; i++) {
+            delete zenek[i];
+        }
+    }
+
 private:
     bool logging = false;
     std::mutex mtx;
     std::unique_lock<std::mutex> log_lock;
     int zenek_pool_size;
     std::deque<std::shared_ptr<zenon>> zenek_pool;
+    std::vector<zenon*> zenek;
 
-    tbb::concurrent_queue<std::shared_ptr<zenon>> zenek_pool_tbb;
+    //tbb::concurrent_queue<std::shared_ptr<zenon>> zenek_pool_tbb;
+
+    boost::lockfree::queue < zenon* > zenek_pool_boost;
 
     void log( char* msg, int a = 0 )
     {
@@ -80,17 +86,16 @@ private:
         }
     }
 
-    std::shared_ptr<zenon> get_zenon_atomic()
+    zenon * get_zenon_atomic()
     {
-
-        std::shared_ptr<zenon> zenek;
-        while( !zenek_pool_tbb.try_pop( zenek ) );
+        zenon * zenek;
+        while( !zenek_pool_boost.pop( zenek ) );
         return zenek;
     }
 
-    void return_zenon_atomic( std::shared_ptr<zenon>& zenek )
+    void return_zenon_atomic( zenon * zenek )
     {
-        zenek_pool_tbb.push( zenek );
+        zenek_pool_boost.push( zenek );
     }
 
 
