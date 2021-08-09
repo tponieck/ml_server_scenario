@@ -28,15 +28,15 @@ public:
         log_lock( mtx, std::defer_lock ),
         logging( log )
     {
-        zenek = new zenon(0, multi_ccs, log);
-        zenek->create_module();
-        zenek->allocate_buffers();
-        zenek->create_cmd_list();
-
-        zenek_pool_size = pool_size;
+        zenek.reserve(pool_size);
+        zenek_pool_boost.reserve(pool_size);
         for( int i = 0; i < pool_size; i++ )
-        {
-            zenek_pool_boost.push( zenek );
+        {            
+            zenek[i] = new zenon(i, multi_ccs, log);
+            zenek[i]->create_module();
+            zenek[i]->allocate_buffers();
+            zenek[i]->create_cmd_list();
+            zenek_pool_boost.push(zenek[i]);
         }
     }
 
@@ -59,7 +59,9 @@ public:
 
     void delete_zenek() 
     {
-        delete zenek;
+        for (int i = 1; i < zenek_pool_size; i++) {
+            delete zenek[i];
+        }
     }
 
 private:
@@ -68,11 +70,11 @@ private:
     std::unique_lock<std::mutex> log_lock;
     int zenek_pool_size;
     std::deque<std::shared_ptr<zenon>> zenek_pool;
-    zenon* zenek;
+    std::vector<zenon*> zenek;
 
     //tbb::concurrent_queue<std::shared_ptr<zenon>> zenek_pool_tbb;
 
-    boost::lockfree::queue<zenon*> zenek_pool_boost;
+    boost::lockfree::queue < zenon* > zenek_pool_boost;
 
     void log( char* msg, int a = 0 )
     {
