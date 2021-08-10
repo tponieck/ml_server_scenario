@@ -180,7 +180,7 @@ public:
         uint64_t gpu_min = *std::min_element(total_exec_time.begin(), total_exec_time.end()) / 1000;
         double gpu_avg_v = avg_u(total_exec_time) / 1000;
 
-        std::cout << "GPU: Min: " << gpu_min << " us \t Max: " << gpu_max << " us \t Avg: " << gpu_avg_v << " us \t" << "Overall time: " << all_kernels_time.count() << " us \n";
+        std::cout << "Total kernels time: Min: " << gpu_min << " us \t Max: " << gpu_max << " us \t Avg: " << gpu_avg_v << " us \n" << "Total GPU time: " << (long)all_kernels_time.count() << " us \n";
     }
 
     double avg(std::vector<double> const& v)
