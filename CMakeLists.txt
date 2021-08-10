@@ -27,9 +27,9 @@ set(MAIN_SRC  ${CMAKE_SOURCE_DIR}/src/main.cpp)
 file(GLOB_RECURSE SRC_FILES
     "${SRC_PATH}/*.cpp"
     "${SRC_INCLUDE_PATH}/ze_info/*.hpp"
-    "${SRC_INCLUDE_PATH}/boost/*.hpp"
-    "${SRC_INCLUDE_PATH}/boost/*/*.hpp"
 )
+
+link_directories(GLOB_RECURSE "${SRC_INCLUDE_PATH}/boost/")
 
 # include libraries
 if(LINUX)
