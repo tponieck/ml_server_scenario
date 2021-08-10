@@ -32,27 +32,28 @@ struct gpu_results
 class zenon
 {
 public:
-    zenon(std::vector<uint8_t>* in, std::vector<uint8_t>* in2, std::vector<uint8_t>* out);
-    zenon(bool log = false);
-    zenon(int _id, bool multi_ccs_enable, bool _log = false) : zenon(_log)
+    zenon( std::vector<uint8_t>* in, std::vector<uint8_t>* in2, std::vector<uint8_t>* out );
+    zenon( bool log = false );
+    zenon( int _id, bool multi_ccs_enable, bool _log = false ) : zenon( _log )
     {
         multi_ccs = multi_ccs_enable;
         id = _id;
         log = _log;
     }
     ~zenon();
-    void create_module(const std::string& cl_file_path = "module.cl");
+    void create_module( const std::string& cl_file_path = "module.cl" );
     void allocate_buffers();
-    void set_input(std::vector<uint8_t>& in) { input = &in; };
-    void set_input2(std::vector<uint8_t>& in2) { input2 = &in2; };
-    void set_output(std::vector<uint8_t>& out) { output = &out; };
+    void set_input( std::vector<uint8_t>& in ) { input = &in; };
+    void set_input2( std::vector<uint8_t>& in2 ) { input2 = &in2; };
+    void set_output( std::vector<uint8_t>& out ) { output = &out; };
+    void set_id(int _id) { id = _id; };
     std::vector<uint8_t>* get_input() { return input; };
     std::vector<uint8_t>* get_input2() { return input2; };
     std::vector<uint8_t>* get_output() { return output; };
     void create_cmd_list();
-    void submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t output_event, std::vector<ze_event_handle_t*> input_events, uint32_t input_event_count);
+    void submit_kernel_to_cmd_list( ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t output_event, std::vector<ze_event_handle_t*> input_events, uint32_t input_event_count );
 
-    gpu_results run(uint32_t id);
+    gpu_results run( uint32_t id );
     void init();
     int get_id() { return id; };
     int get_ccs_id() { return ccs_id; };
@@ -95,8 +96,8 @@ private:
     static uint32_t command_queue_count, zenon_cntr;
 
     ze_event_pool_handle_t event_pool;
-    ze_event_handle_t kernel_ts_event[MAX_EVENTS_COUNT];
-    ze_kernel_timestamp_result_t kernel_ts_results[MAX_EVENTS_COUNT];
+    ze_event_handle_t kernel_ts_event[ MAX_EVENTS_COUNT ];
+    ze_kernel_timestamp_result_t kernel_ts_results[ MAX_EVENTS_COUNT ];
     uint32_t graph_event_count = 0;
     std::vector<std::string> kernel_names;
 };
