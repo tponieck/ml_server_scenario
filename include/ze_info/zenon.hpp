@@ -43,10 +43,10 @@ public:
     ~zenon();
     void create_module(const std::string& cl_file_path = "module.cl");
     void allocate_buffers();
-    void set_input(std::vector<uint8_t>& in) { input = &in; };
+    void set_input1(std::vector<uint8_t>& in1) { input1 = &in1; };
     void set_input2(std::vector<uint8_t>& in2) { input2 = &in2; };
     void set_output(std::vector<uint8_t>& out) { output = &out; };
-    std::vector<uint8_t>* get_input() { return input; };
+    std::vector<uint8_t>* get_input1() { return input1; };
     std::vector<uint8_t>* get_input2() { return input2; };
     std::vector<uint8_t>* get_output() { return output; };
     void create_cmd_list();
@@ -61,9 +61,9 @@ private:
     static bool ze_initalized;
     bool log;
     bool multi_ccs = true;
-    void* input_buffer = nullptr, * input2_buffer = nullptr, * output_buffer = nullptr, * im_buf1 = nullptr, * im_buf2 = nullptr, * im_buf3 = nullptr, * im_buf4 = nullptr, * im_buf5 = nullptr, * im_buf6 = nullptr;
+    void* input1_buffer = nullptr, * input2_buffer = nullptr, * output_buffer = nullptr, * im_buf1 = nullptr, * im_buf2 = nullptr, * im_buf3 = nullptr, * im_buf4 = nullptr, * im_buf5 = nullptr, * im_buf6 = nullptr;
 
-    std::vector<uint8_t>* input;
+    std::vector<uint8_t>* input1;
     std::vector<uint8_t>* input2;
     std::vector<uint8_t>* output;
     gpu_results gpu_result;
@@ -78,7 +78,7 @@ private:
     static ze_device_handle_t device;
     static ze_context_desc_t context_descriptor;
     static ze_context_handle_t context;
-    static uint32_t computeQueueGroupOrdinal;
+    static uint32_t computeQueueGroupOrdinal, copyOnlyQueueGroupOrdinal;
     ze_module_desc_t module_descriptor = {};
     ze_module_handle_t module = nullptr;
     ze_kernel_desc_t kernel_descriptor = {};
@@ -92,6 +92,17 @@ private:
     ze_group_count_t group_count = {};
     ze_command_queue_desc_t command_queue_descriptor = {};
     ze_command_queue_handle_t command_queue;
+    
+    ze_command_queue_handle_t input_copy_command_queue;
+    ze_command_list_handle_t input_copy_command_list;
+    ze_command_queue_desc_t input_copy_command_queue_descriptor = {};
+    ze_command_list_desc_t input_copy_command_list_descriptor = {};
+
+    ze_command_queue_handle_t output_copy_command_queue;
+    ze_command_list_handle_t output_copy_command_list;
+    ze_command_queue_desc_t output_copy_command_queue_descriptor = {};
+    ze_command_list_desc_t output_copy_command_list_descriptor = {};
+
     static uint32_t command_queue_count, zenon_cntr;
 
     ze_event_pool_handle_t event_pool;

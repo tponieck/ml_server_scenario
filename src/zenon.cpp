@@ -34,15 +34,15 @@ bool profiling = false;
 zenon::zenon(bool _log)
 {
     log = _log;
-    input = new std::vector<uint8_t>(INPUT_SIZE, 0);
+    input1 = new std::vector<uint8_t>(INPUT_SIZE, 0);
     input2 = new std::vector<uint8_t>( INPUT_SIZE, 0 );
     output = new std::vector<uint8_t>(INPUT_SIZE, 0);
     init();
 }
 
-zenon::zenon( std::vector<uint8_t>* in, std::vector<uint8_t>* in2, std::vector<uint8_t>* out )
+zenon::zenon( std::vector<uint8_t>* in1, std::vector<uint8_t>* in2, std::vector<uint8_t>* out )
 {
-    input = in;
+    input1 = in1;
     input2 = in2;
     output = out;
     init();
@@ -113,10 +113,20 @@ void zenon::init()
             if (cmdqueueGroupProperties[i].flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE) {
                 computeQueueGroupOrdinal = i;
             }
+
+            if( !( cmdqueueGroupProperties[ i ].flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE ) &&
+                ( cmdqueueGroupProperties[ i ].flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COPY ) )
+            {
+                copyOnlyQueueGroupOrdinal = i;
+                break;
+            }
         }
 
-        command_queue_count = cmdqueueGroupProperties[computeQueueGroupOrdinal].numQueues;
-      
+        command_queue_count = cmdqueueGroupProperties[ computeQueueGroupOrdinal ].numQueues;
+
+        //if( !( device_properties.flags & ZE_DEVICE_PROPERTY_FLAG_INTEGRATED ) )
+        //    command_queue_count += cmdqueueGroupProperties[ copyOnlyQueueGroupOrdinal ].numQueues;
+       
     }
 
     command_queue_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_QUEUE_DESC;
@@ -132,16 +142,43 @@ void zenon::init()
     command_queue_descriptor.index = ccs_id;
     
     SUCCESS_OR_TERMINATE(zeCommandQueueCreate(context, device, &command_queue_descriptor, &command_queue));
+
+    input_copy_command_queue_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_QUEUE_DESC;
+    input_copy_command_queue_descriptor.pNext = nullptr;
+    input_copy_command_queue_descriptor.flags = 0;
+    input_copy_command_queue_descriptor.mode = ZE_COMMAND_QUEUE_MODE_DEFAULT;
+    input_copy_command_queue_descriptor.priority = ZE_COMMAND_QUEUE_PRIORITY_NORMAL;
+    input_copy_command_queue_descriptor.ordinal = copyOnlyQueueGroupOrdinal;
+    input_copy_command_queue_descriptor.index = 0;
+    SUCCESS_OR_TERMINATE( zeCommandQueueCreate( context, device, &input_copy_command_queue_descriptor, &input_copy_command_queue ) );
+
+    output_copy_command_queue_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_QUEUE_DESC;
+    output_copy_command_queue_descriptor.pNext = nullptr;
+    output_copy_command_queue_descriptor.flags = 0;
+    output_copy_command_queue_descriptor.mode = ZE_COMMAND_QUEUE_MODE_DEFAULT;
+    output_copy_command_queue_descriptor.priority = ZE_COMMAND_QUEUE_PRIORITY_NORMAL;
+    output_copy_command_queue_descriptor.ordinal = copyOnlyQueueGroupOrdinal;
+    output_copy_command_queue_descriptor.index = 0;
+    SUCCESS_OR_TERMINATE( zeCommandQueueCreate( context, device, &output_copy_command_queue_descriptor, &output_copy_command_queue ) );
 }
 zenon::~zenon()
 {
 
     zenon_cntr--;
+
+    SUCCESS_OR_TERMINATE( zeCommandListDestroy( input_copy_command_list ) );
+
+    SUCCESS_OR_TERMINATE( zeCommandQueueDestroy( input_copy_command_queue ) );
+
+    SUCCESS_OR_TERMINATE( zeCommandListDestroy( output_copy_command_list ) );
+
+    SUCCESS_OR_TERMINATE( zeCommandQueueDestroy( output_copy_command_queue ) );
+
     SUCCESS_OR_TERMINATE(zeCommandListDestroy(command_list));
 
     SUCCESS_OR_TERMINATE( zeMemFree( context, output_buffer ) );
 
-    SUCCESS_OR_TERMINATE( zeMemFree( context, input_buffer ) );
+    SUCCESS_OR_TERMINATE( zeMemFree( context, input1_buffer ) );
 
     SUCCESS_OR_TERMINATE(zeMemFree( context, input2_buffer ));
 
@@ -155,15 +192,20 @@ zenon::~zenon()
         SUCCESS_OR_TERMINATE( zeEventDestroy( *kernel_ts_event ));
         SUCCESS_OR_TERMINATE( zeEventPoolDestroy( event_pool ));
 
-        for (uint32_t i = 0; i < command_queue_count; i++)
-            SUCCESS_OR_TERMINATE( zeCommandQueueDestroy(command_queue));
+        for( uint32_t i = 0; i < command_queue_count; i++ )
+        {
+            SUCCESS_OR_TERMINATE( zeCommandQueueDestroy( command_queue ) );
+            SUCCESS_OR_TERMINATE( zeCommandQueueDestroy( input_copy_command_queue ) );
+            SUCCESS_OR_TERMINATE( zeCommandQueueDestroy( output_copy_command_queue ) );
+        }
 
         SUCCESS_OR_TERMINATE( zeContextDestroy( context ) );
         
         ze_initalized = false;
     }
 
-    delete input;
+    delete input1;
+    delete input2;
     delete output;
 }
 
@@ -197,39 +239,33 @@ void zenon::allocate_buffers()
    
     memory_descriptor.stype = ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC;
     memory_descriptor.ordinal = 0;
+    auto alloc_size = sizeof( uint8_t ) * input1->size();
 
     SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        sizeof( uint8_t ) * input->size(), 1, device,
-        &input_buffer ) );
-    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        sizeof( uint8_t ) * input->size(), 1, device,
-        &input2_buffer ) );
-
-    SUCCESS_OR_TERMINATE( zeMemAllocDevice(context, &memory_descriptor,
-        sizeof(uint8_t) * output->size(), 1, device,
-        &output_buffer));
+        alloc_size, 1, device, &input1_buffer ) );
 
     SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        sizeof( uint8_t ) * output->size(), 1, device,
-        &im_buf1 ) );
+        alloc_size, 1, device, &input2_buffer ) );
 
     SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        sizeof( uint8_t ) * output->size(), 1, device,
-        &im_buf2 ) );
+        alloc_size, 1, device, &output_buffer ) );
+
     SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        sizeof( uint8_t ) * output->size(), 1, device,
+        alloc_size, 1, device, &im_buf1 ) );
+
+    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
+        alloc_size, 1, device, &im_buf2 ) );
+    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
+        alloc_size, 1, device,
         &im_buf3 ) );
     SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        sizeof( uint8_t ) * output->size(), 1, device,
-        &im_buf4 ) );
+        alloc_size, 1, device, &im_buf4 ) );
 
     SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        sizeof( uint8_t ) * output->size(), 1, device,
-        &im_buf5 ) );
+        alloc_size, 1, device, &im_buf5 ) );
 
     SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        sizeof( uint8_t ) * output->size(), 1, device,
-        &im_buf6 ) );
+        alloc_size, 1, device, &im_buf6 ) );
 
 }
 
@@ -243,7 +279,7 @@ void zenon::submit_kernel_to_cmd_list( ze_kernel_handle_t& _kernel,
     int param_cnt = 0;
     for( int i = 0; i < input.size(); i++ )
     {
-        SUCCESS_OR_TERMINATE( zeKernelSetArgumentValue( _kernel, param_cnt++, sizeof( input_buffer ), &input.at( i ) ));
+        SUCCESS_OR_TERMINATE( zeKernelSetArgumentValue( _kernel, param_cnt++, sizeof( input1_buffer ), &input.at( i ) ));
     }
     SUCCESS_OR_TERMINATE( zeKernelSetArgumentValue( _kernel, param_cnt++, sizeof( output_buffer ), &output ));
     SUCCESS_OR_TERMINATE( zeCommandListAppendLaunchKernel( command_list, _kernel, &group_count,
@@ -283,34 +319,44 @@ void createEventPoolAndEvents( ze_context_handle_t& context,
 
 void zenon::create_cmd_list()
 {
+    auto allocSize = sizeof( uint8_t ) * input1->size();
+
+    //input copy engine
+    input_copy_command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
+    input_copy_command_list_descriptor.pNext = nullptr;
+    input_copy_command_list_descriptor.flags = 0;
+    input_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
+    SUCCESS_OR_TERMINATE( zeCommandListCreate( context, device, &input_copy_command_list_descriptor, &input_copy_command_list ) );
+
+    SUCCESS_OR_TERMINATE( zeCommandListAppendMemoryCopy( input_copy_command_list, input1_buffer, input1->data(), allocSize, nullptr, 0, nullptr ) );
+    SUCCESS_OR_TERMINATE( zeCommandListAppendBarrier( input_copy_command_list, nullptr, 0, nullptr ) );
+    SUCCESS_OR_TERMINATE( zeCommandListAppendMemoryCopy( input_copy_command_list, input2_buffer, input2->data(), allocSize, nullptr, 0, nullptr ) );
+    SUCCESS_OR_TERMINATE( zeCommandListAppendBarrier( input_copy_command_list, nullptr, 0, nullptr ) );
+    SUCCESS_OR_TERMINATE( zeCommandListClose( input_copy_command_list ) );
+
+    //compute engine
     uint32_t group_size_x = 0;
     uint32_t group_size_y = 0;
     uint32_t group_size_z = 0;
-    SUCCESS_OR_TERMINATE(zeKernelSuggestGroupSize(kernel, input->size(), 1U, 1U, &group_size_x, &group_size_y, &group_size_z ) );
-    SUCCESS_OR_TERMINATE(zeKernelSetGroupSize(kernel, group_size_x, group_size_y, group_size_z));
+    SUCCESS_OR_TERMINATE( zeKernelSuggestGroupSize( kernel, input1->size(), 1U, 1U, &group_size_x, &group_size_y, &group_size_z ) );
+    SUCCESS_OR_TERMINATE( zeKernelSetGroupSize( kernel, group_size_x, group_size_y, group_size_z ) );
 
     command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
     command_list_descriptor.commandQueueGroupOrdinal = 0;
 
-    SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &command_list_descriptor, &command_list));
+    SUCCESS_OR_TERMINATE( zeCommandListCreate( context, device, &command_list_descriptor, &command_list ) );
 
-    SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy( command_list, input_buffer, input->data(), sizeof(uint8_t) * input->size(), nullptr, 0, nullptr));
-
-    SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy( command_list, input2_buffer, input2->data(), sizeof( uint8_t ) * input2->size(), nullptr, 0, nullptr ));
-
-    SUCCESS_OR_TERMINATE( zeCommandListAppendBarrier( command_list, nullptr, 0, nullptr ));
-
-    createEventPoolAndEvents( context, device, event_pool, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP, MAX_EVENTS_COUNT, &kernel_ts_event[0] );
-    group_count.groupCountX = input->size() / group_size_x;
+    createEventPoolAndEvents( context, device, event_pool, ZE_EVENT_POOL_FLAG_KERNEL_TIMESTAMP, MAX_EVENTS_COUNT, &kernel_ts_event[ 0 ] );
+    group_count.groupCountX = input1->size() / group_size_x;
     group_count.groupCountY = 1;
     group_count.groupCountZ = 1;
 
     kernel_names.clear();
-    
-    submit_kernel_to_cmd_list( add_buffers_kernel, { input_buffer, input2_buffer }, im_buf1, kernel_ts_event[ 0 ], { nullptr }, 0 );
-    submit_kernel_to_cmd_list( add_buffers_kernel, { input_buffer, input2_buffer }, im_buf2, kernel_ts_event[ 1 ], { nullptr }, 0 );
 
-    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf3, kernel_ts_event[ 2 ], { &kernel_ts_event[0], &kernel_ts_event[1] }, 2 );
+    submit_kernel_to_cmd_list( add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[ 0 ], { nullptr }, 0 );
+    submit_kernel_to_cmd_list( add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[ 1 ], { nullptr }, 0 );
+
+    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf3, kernel_ts_event[ 2 ], { &kernel_ts_event[ 0 ], &kernel_ts_event[ 1 ] }, 2 );
 
     submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf4, kernel_ts_event[ 3 ], { &kernel_ts_event[ 0 ], &kernel_ts_event[ 1 ] }, 2 );
     submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf5, kernel_ts_event[ 4 ], { &kernel_ts_event[ 0 ], &kernel_ts_event[ 1 ] }, 2 );
@@ -318,15 +364,30 @@ void zenon::create_cmd_list()
     submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf4, im_buf5 }, im_buf6, kernel_ts_event[ 5 ], { &kernel_ts_event[ 3 ], &kernel_ts_event[ 4 ] }, 2 );
 
     submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf3, im_buf6 }, output_buffer, nullptr, { &kernel_ts_event[ 2 ], &kernel_ts_event[ 5 ] }, 2 );
-    
-    SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy( command_list, output->data(), output_buffer, sizeof(uint8_t) * output->size(), nullptr, 1, &kernel_ts_event[ 5 ] ));
-    SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
+
+    SUCCESS_OR_TERMINATE( zeCommandListClose( command_list ) );
+
+    //Output copy engine
+    output_copy_command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
+    output_copy_command_list_descriptor.pNext = nullptr;
+    output_copy_command_list_descriptor.flags = 0;
+    output_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
+
+    SUCCESS_OR_TERMINATE( zeCommandListCreate( context, device, &output_copy_command_list_descriptor, &output_copy_command_list ) );
+    SUCCESS_OR_TERMINATE( zeCommandListAppendMemoryCopy( output_copy_command_list, output->data(), output_buffer, allocSize, nullptr, 1, &kernel_ts_event[ 5 ] ) );
+    SUCCESS_OR_TERMINATE( zeCommandListClose( output_copy_command_list ) );
 }
 
 gpu_results zenon::run(uint32_t clinet_id)
 {
-    SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(command_queue, 1, &command_list, nullptr));
-    SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(command_queue, UINT64_MAX));
+    SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( input_copy_command_queue, 1, &input_copy_command_list, nullptr ) );
+    SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( input_copy_command_queue, UINT64_MAX ) );
+
+    SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( command_queue, 1, &command_list, nullptr ) );
+    SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( command_queue, UINT64_MAX ) );
+
+    SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( output_copy_command_queue, 1, &output_copy_command_list, nullptr ) );
+    SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( output_copy_command_queue, UINT64_MAX ) );
 
     if( profiling )
     {
@@ -368,4 +429,5 @@ std::vector<ze_device_handle_t> zenon::devices;
 ze_device_handle_t zenon::device;
 uint32_t zenon::command_queue_count = 1;
 uint32_t zenon::computeQueueGroupOrdinal = 0;
+uint32_t zenon::copyOnlyQueueGroupOrdinal = 0;
 uint32_t zenon::zenon_cntr = 0;
