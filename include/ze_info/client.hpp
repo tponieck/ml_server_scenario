@@ -116,7 +116,7 @@ public:
         for (int i = 0; i < queries; i++)
         {
             thread_pool[i] = new std::thread(&client::run_single, this, i);
-            //std::this_thread::sleep_for(dist[i]);
+            std::this_thread::sleep_for(dist[i]);
         }
         high_resolution_clock::time_point end_time = high_resolution_clock::now();
         all_kernels_time = end_time - start_time;

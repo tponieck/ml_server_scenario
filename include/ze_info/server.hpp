@@ -27,7 +27,7 @@ public:
         log_lock(mtx, std::defer_lock),
         logging(log)
     {
-        zenek.reserve(pool_size);
+        zenek.resize(pool_size);
         zenek_pool_boost.reserve(pool_size);
         for (int i = 0; i < pool_size; i++)
         {
@@ -43,9 +43,9 @@ public:
     {
         zenon* zenek = get_zenon_atomic();
         int zen_id = zenek->get_id();
-        std::vector<uint8_t>* in = zenek->get_input();
+        std::vector<uint8_t>* in1 = zenek->get_input1();
         std::vector<uint8_t>* in2 = zenek->get_input2();
-        std::fill(in->begin(), in->end(), id);
+        std::fill(in1->begin(), in1->end(), id);
         std::fill(in2->begin(), in2->end(), id - 1);
         gpu_results gpu_result = zenek->run(id);
         int ccs_id = zenek->get_ccs_id();
@@ -96,10 +96,6 @@ private:
     {
         zenek_pool_boost.push(zenek);
     }
-
-
-
-
 };
 
 #endif
