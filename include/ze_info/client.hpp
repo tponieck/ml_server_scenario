@@ -20,7 +20,6 @@
 #include <algorithm>
 #include  "ze_info/server.hpp"
 
-
 using namespace std::chrono;
 extern bool profiling;
 
@@ -37,7 +36,7 @@ private:
     bool warm_up;
     server serv;
     std::vector<gpu_results> gpu_results_vec;
-    std::chrono::duration<double, std::micro> all_kernels_time ;
+    std::vector<uint64_t> total_gpu_time;
 
     void create_distribution()
     {
@@ -52,7 +51,7 @@ private:
 
                 bool file_correct = true;
 
-                // read the elements in the file into a vector  
+                // read the elements in the file into a vector
                 int n = 0;
                 while (inputFile >> value) {
                     if (n >= queries)
@@ -69,7 +68,6 @@ private:
             }
             if (logging)
                 std::cout << "Fixed distribution selected, correct file not found." << std::endl;
-
         }
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -83,7 +81,6 @@ private:
             std::ofstream outfile(filename);
             for (int n = 0; n < dist.size(); ++n)
                 outfile << (long long)dist[n].count() << " ";
-
         }
     }
 
@@ -111,15 +108,12 @@ public:
         if (warm_up)
             run_single(0);
 
-        high_resolution_clock::time_point start_time = high_resolution_clock::now();
         std::thread** thread_pool = new std::thread * [queries];
         for (int i = 0; i < queries; i++)
         {
             thread_pool[i] = new std::thread(&client::run_single, this, i);
             std::this_thread::sleep_for(dist[i]);
         }
-        high_resolution_clock::time_point end_time = high_resolution_clock::now();
-        all_kernels_time = end_time - start_time;
 
         for (int i = 0; i < queries; i++)
         {
@@ -138,7 +132,7 @@ public:
             gpu_results_vec[qid] = serv.query_sample(qid);
         }
         catch (std::exception ex)
-        {
+        {    
             std::cout << ex.what();
         }
         high_resolution_clock::time_point end_time = high_resolution_clock::now();
@@ -180,7 +174,13 @@ public:
         uint64_t gpu_min = *std::min_element(total_exec_time.begin(), total_exec_time.end()) / 1000;
         double gpu_avg_v = avg_u(total_exec_time) / 1000;
 
-        std::cout << "Total kernels time: Min: " << gpu_min << " us \t Max: " << gpu_max << " us \t Avg: " << gpu_avg_v << " us \n" << "Total GPU time: " << (long)all_kernels_time.count() << " us \n";
+        total_gpu_time = get_total_gpu_time_vec(gpu_results_vec);
+        uint64_t total_gpu_max = *std::max_element(total_gpu_time.begin(), total_gpu_time.end()) / 1000; //1st kernel start -> last kernel end max
+        uint64_t total_gpu_min = *std::min_element(total_gpu_time.begin(), total_gpu_time.end()) / 1000; //1st kernel start -> last kernel end min
+        double total_gpu_avg = avg_u(total_gpu_time) / 1000; //1st kernel start -> last kernel end avg
+
+        std::cout << "Total kernels time: Min: " << gpu_min << " us\t\t Max: " << gpu_max << " us \t\t Avg: " << gpu_avg_v << " us \n";
+        std::cout << "Total GPU time:     Min: " << total_gpu_min << " us\t\t Max: " << total_gpu_max << " us \t\t Avg: " << total_gpu_avg << " us \n";
     }
 
     double avg(std::vector<double> const& v)
@@ -193,6 +193,15 @@ public:
         return std::accumulate(v.begin(), v.end(), 0) / v.size();
     }
 
+    std::vector<uint64_t> get_total_gpu_time_vec(std::vector<gpu_results> const& v)
+    {
+        std::vector<uint64_t> total_gpu_time_vec;
+        for (int i = 0; i < v.size(); i++) {
+            total_gpu_time_vec.push_back(v.at(i).gpu_time);
+        }
+        return total_gpu_time_vec;
+    }
+
     void print_results()
     {
         double max = *std::max_element(results.begin(), results.end());
@@ -200,12 +209,8 @@ public:
         double avg_v = avg(results);
         if (profiling)
             print_profiling();
-        std::cout << "CPU: Min: " << min << " us \t Max: " << max << " us \t Avg: " << avg_v << " us \n";
-
+        std::cout << "CPU:                Min: " << min << " us \t Max: " << max << " us \t Avg: " << avg_v << " us \n";
     }
-
-
 };
-
 
 #endif
