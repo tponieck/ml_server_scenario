@@ -363,7 +363,7 @@ void zenon::create_cmd_list()
 
     submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf4, im_buf5 }, im_buf6, kernel_ts_event[ 5 ], { &kernel_ts_event[ 3 ], &kernel_ts_event[ 4 ] }, 2 );
 
-    submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf3, im_buf6 }, output_buffer, nullptr, { &kernel_ts_event[ 2 ], &kernel_ts_event[ 5 ] }, 2 );
+    submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf3, im_buf6 }, output_buffer, kernel_ts_event[ 6 ], { &kernel_ts_event[ 2 ], &kernel_ts_event[ 5 ] }, 2 );
 
     SUCCESS_OR_TERMINATE( zeCommandListClose( command_list ) );
 
@@ -374,7 +374,7 @@ void zenon::create_cmd_list()
     output_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
 
     SUCCESS_OR_TERMINATE( zeCommandListCreate( context, device, &output_copy_command_list_descriptor, &output_copy_command_list ) );
-    SUCCESS_OR_TERMINATE( zeCommandListAppendMemoryCopy( output_copy_command_list, output->data(), output_buffer, allocSize, nullptr, 1, &kernel_ts_event[ 5 ] ) );
+    SUCCESS_OR_TERMINATE( zeCommandListAppendMemoryCopy( output_copy_command_list, output->data(), output_buffer, allocSize, nullptr, 1, &kernel_ts_event[ 6 ] ) );
     SUCCESS_OR_TERMINATE( zeCommandListClose( output_copy_command_list ) );
 }
 
@@ -398,7 +398,7 @@ gpu_results zenon::run(uint32_t clinet_id)
         gpu_result.execuction_time = 0;
         uint64_t timerResolution = devProperties.timerResolution;
         uint64_t kernelDuration = 0;
-        for( int i = 0; i < graph_event_count - 1; i++ )
+        for( int i = 0; i < graph_event_count; i++ )
         {
             SUCCESS_OR_TERMINATE( zeEventQueryKernelTimestamp( kernel_ts_event[ i ], &kernel_ts_results[ i ] ) );
             kernelDuration = ( kernel_ts_results[ i ].context.kernelEnd - kernel_ts_results[ i ].context.kernelStart ) * timerResolution;
