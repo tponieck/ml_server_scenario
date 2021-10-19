@@ -352,9 +352,7 @@ void zenon::create_cmd_list()
     submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf4, kernel_ts_event[ 3 ], { &kernel_ts_event[ 0 ], &kernel_ts_event[ 1 ] }, 2 );
     submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf5, kernel_ts_event[ 4 ], { &kernel_ts_event[ 0 ], &kernel_ts_event[ 1 ] }, 2 );
 
-    submit_kernel_to_cmd_list(mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf4, kernel_ts_event[3], { &kernel_ts_event[0], &kernel_ts_event[1] }, 2);
-    submit_kernel_to_cmd_list(mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf5, kernel_ts_event[4], { &kernel_ts_event[0], &kernel_ts_event[1] }, 2);
-
+    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf4, im_buf5 }, im_buf6, kernel_ts_event[ 5 ], { &kernel_ts_event[ 3 ], &kernel_ts_event[ 4 ] }, 2 );
     submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf3, im_buf6 }, output_buffer, kernel_ts_event[ 6 ], { &kernel_ts_event[ 2 ], &kernel_ts_event[ 5 ] }, 2 );
 
     SUCCESS_OR_TERMINATE( zeCommandListClose( command_list ) );
