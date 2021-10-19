@@ -67,13 +67,11 @@ private:
     bool logging = false;
     std::mutex mtx;
     std::unique_lock<std::mutex> log_lock;
-    int zenek_pool_size;
+    int zenek_pool_size = 0;
     std::deque<std::shared_ptr<zenon>> zenek_pool;
     std::vector<zenon*> zenek;
 
-    //tbb::concurrent_queue<std::shared_ptr<zenon>> zenek_pool_tbb;
-
-    boost::lockfree::queue < zenon*, boost::lockfree::capacity<1> > zenek_pool_boost;
+    boost::lockfree::queue < zenon*/*, boost::lockfree::capacity<1>*/ > zenek_pool_boost;
 
     void log(char* msg, int a = 0)
     {
