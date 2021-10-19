@@ -8,8 +8,6 @@
 #ifndef ZENON_HPP
 #define ZENON_HPP
 
-
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -27,6 +25,7 @@ struct gpu_results
     std::vector<uint64_t> kernel_time;
     std::vector<std::string>  kernel_name;
     uint64_t execuction_time = 0;
+    uint64_t gpu_time;
 };
 
 class zenon
