@@ -346,14 +346,21 @@ void zenon::create_cmd_list()
 
     submit_kernel_to_cmd_list( add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[ 0 ], { nullptr }, 0 );
     submit_kernel_to_cmd_list( add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[ 1 ], { nullptr }, 0 );
+    submit_kernel_to_cmd_list( add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[ 2 ], { nullptr }, 0 );
 
-    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf3, kernel_ts_event[ 2 ], { &kernel_ts_event[ 0 ], &kernel_ts_event[ 1 ] }, 2 );
+    uint32_t number_of_kernels = 40;
 
-    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf4, kernel_ts_event[ 3 ], { &kernel_ts_event[ 0 ], &kernel_ts_event[ 1 ] }, 2 );
-    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf1, im_buf2 }, im_buf5, kernel_ts_event[ 4 ], { &kernel_ts_event[ 0 ], &kernel_ts_event[ 1 ] }, 2 );
+    for( int i = 1; i < number_of_kernels; i++ )
+    {
+        if( i % 3 == 0 )
+            submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf1, im_buf2 }, im_buf3, kernel_ts_event[ i + 2 ], { &kernel_ts_event[ i ] , &kernel_ts_event[ i + 1 ] }, 2 );
+        if( i % 3 == 1 )
+            submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf3, im_buf2 }, im_buf1, kernel_ts_event[ i + 2 ], { &kernel_ts_event[ i ] , &kernel_ts_event[ i + 1 ] }, 2 );
+        if( i % 3 == 2 )
+            submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf1, im_buf3 }, im_buf2, kernel_ts_event[ i + 2 ], { &kernel_ts_event[ i ] , &kernel_ts_event[ i + 1 ] }, 2 );
+    }
 
-    submit_kernel_to_cmd_list( mul_buffers_kernel, { im_buf4, im_buf5 }, im_buf6, kernel_ts_event[ 5 ], { &kernel_ts_event[ 3 ], &kernel_ts_event[ 4 ] }, 2 );
-    submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf3, im_buf6 }, output_buffer, kernel_ts_event[ 6 ], { &kernel_ts_event[ 2 ], &kernel_ts_event[ 5 ] }, 2 );
+    submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf3, im_buf2 }, output_buffer, kernel_ts_event[ number_of_kernels + 2 ], { &kernel_ts_event[ number_of_kernels ], &kernel_ts_event[ number_of_kernels + 1 ] }, 2 );
 
     SUCCESS_OR_TERMINATE( zeCommandListClose( command_list ) );
 
@@ -364,7 +371,7 @@ void zenon::create_cmd_list()
     output_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
 
     SUCCESS_OR_TERMINATE( zeCommandListCreate( context, device, &output_copy_command_list_descriptor, &output_copy_command_list ) );
-    SUCCESS_OR_TERMINATE( zeCommandListAppendMemoryCopy( output_copy_command_list, output->data(), output_buffer, allocSize, nullptr, 1, &kernel_ts_event[ 6 ] ) );
+    SUCCESS_OR_TERMINATE( zeCommandListAppendMemoryCopy( output_copy_command_list, output->data(), output_buffer, allocSize, nullptr, 1, &kernel_ts_event[ number_of_kernels + 2 ] ) );
     SUCCESS_OR_TERMINATE( zeCommandListClose( output_copy_command_list ) );
 }
 
