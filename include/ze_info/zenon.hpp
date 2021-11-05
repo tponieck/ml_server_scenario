@@ -49,8 +49,8 @@ public:
     std::vector<uint8_t>* get_input2() { return input2; };
     std::vector<uint8_t>* get_output() { return output; };
     void create_cmd_list();
-    void submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t output_event, std::vector<ze_event_handle_t*> input_events, uint32_t input_event_count);
-
+    void submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t output_event, std::vector<ze_event_handle_t*> input_events, uint32_t input_event_count); 
+    void zenon::submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t output_event, std::vector<ze_event_handle_t*> input_events, uint32_t input_event_count, int counter);
     gpu_results run(uint32_t id);
     void init();
     int get_id() { return id; };
@@ -85,6 +85,9 @@ private:
     ze_kernel_handle_t heavy_kernel = nullptr;
     ze_kernel_handle_t add_buffers_kernel = nullptr;
     ze_kernel_handle_t mul_buffers_kernel = nullptr;
+    ze_kernel_handle_t cmp_bound_kernel = nullptr;
+    ze_kernel_handle_t mem_bound_kernel = nullptr;
+    
     ze_device_mem_alloc_desc_t memory_descriptor = {};
     ze_command_list_desc_t command_list_descriptor = {};
     ze_command_list_handle_t command_list = nullptr;

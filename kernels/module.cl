@@ -23,3 +23,23 @@ kernel void heavy(const global char *input, global char *output)
         for(int j = 0; j < 10; j++)
             output[id] = input[id]+i*j;
 }
+
+kernel void cmp_bound_kernel(const global char *input, const global char *input2, global char *output, int counter)
+{
+    long int a = 1;
+    for (int i = 0; i < counter; i++)
+    {
+        a = i * a * a;
+
+    }
+    output[0] = a;
+}
+
+kernel void mem_bound_kernel(const global char *input, const global char *input2, global char *output, int counter)
+{
+    for (int i = 0; i < counter; i++)
+    {
+        output[i] = input[i] + input2[i];
+    }
+}
+
