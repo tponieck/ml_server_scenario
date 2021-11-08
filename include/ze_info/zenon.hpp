@@ -18,7 +18,7 @@
 #include "ze_info/offline_compiler.hpp"
 #include "ze_info/utils.hpp"
 
-#define MAX_EVENTS_COUNT 50
+#define MAX_EVENTS_COUNT 55
 
 struct gpu_results
 {
