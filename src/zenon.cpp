@@ -299,7 +299,6 @@ void zenon::submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel,
     ze_event_handle_t output_event,
     std::vector<ze_event_handle_t*> input_events,
     uint32_t input_event_count,
-
     int counter)
 {
     int param_cnt = 0;
