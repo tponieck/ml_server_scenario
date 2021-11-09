@@ -35,6 +35,7 @@ void check_caps()
 
 extern bool verbose;
 extern bool profiling;
+extern bool resnet;
 
 void print_help()
 {
@@ -49,6 +50,7 @@ void print_help()
     std::cout << "--disable_wu      - disable warm up" << std::endl;
     std::cout << "--verbose         - verbose" << std::endl;
     std::cout << "--profiling       - gpu kernel stats" << std::endl;
+    std::cout << "--resnet          - run resnet 50 simulation" << std::endl;
 }
 
 int main(int argc, const char **argv) {
@@ -66,6 +68,7 @@ int main(int argc, const char **argv) {
     bool warm_up = true;
     profiling = false;
     verbose = false;
+    resnet = false;
 
 
     for( int i = 1; i < argc ; i++)
@@ -112,6 +115,10 @@ int main(int argc, const char **argv) {
         else if( !strcmp( argv[ i ], "--profiling" ) )
         {
             profiling = true;
+        }
+        else if( !strcmp( argv[ i ], "--resnet" ) )
+        {
+            resnet = true;
         }
         /*else if (!strcmp(argv[i], "--run_mt"))
         {
