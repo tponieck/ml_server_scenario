@@ -26,20 +26,21 @@ kernel void heavy(const global char *input, global char *output)
 
 kernel void cmp_bound_kernel(const global char *input, const global char *input2, global char *output, int counter)
 {
-    long int a = 1;
-    for (int i = 0; i < counter; i++)
+    int a = 1;
+    const size_t id = get_global_id(0);
+    for (int i = 1; i <= counter; i++)
     {
-        a = i * a * a;
-
+        a += i + i;
     }
-    output[0] = a;
+    output[id] = a;
 }
 
 kernel void mem_bound_kernel(const global char *input, const global char *input2, global char *output, int counter)
 {
+    const size_t id = get_global_id(0);
     for (int i = 0; i < counter; i++)
     {
-        output[i] = input[i] + input2[i];
+        output[id] += input[id] + input2[id];
     }
 }
 
