@@ -429,7 +429,6 @@ void zenon::create_cmd_list()
         {
             zeCommandListAppendEventReset(command_list, kernel_ts_event[i]);
         }
-        //number_of_kernels = 0;
             submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0, 187717);                                           //conv1
             submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { &kernel_ts_event[0] }, 1, 145798);                               //pool1
             submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[2], { &kernel_ts_event[1] }, 1, 201456);                               //<-res2a_branch1
@@ -484,8 +483,7 @@ void zenon::create_cmd_list()
             submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[51], { &kernel_ts_event[50]}, 1, 29580);                               //<-res5c_branch2a
             submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[52], { &kernel_ts_event[51] }, 1, 55398);                              //<-res5c_branch2b
             submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[53], { &kernel_ts_event[52] }, 1, 27278);                              //<-res5c_branch2c
-           // submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[54], { &kernel_ts_event[53] }, 1, 1);                                //<-fc1000
-
+           
             SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
 
             //Output copy engine
