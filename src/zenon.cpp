@@ -495,7 +495,7 @@ void zenon::create_cmd_list()
             output_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
 
             SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &output_copy_command_list_descriptor, &output_copy_command_list));
-            SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output->data(), im_buf5, allocSize, nullptr, 1, &kernel_ts_event[53]));
+            SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output->data(), im_buf6, allocSize, nullptr, 1, &kernel_ts_event[53]));
             SUCCESS_OR_TERMINATE(zeCommandListClose(output_copy_command_list));
 
     }

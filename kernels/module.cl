@@ -31,13 +31,14 @@ kernel void cmp_bound_kernel(const global char *input, const global char *input2
 {
     int a = 1;
     const size_t id = get_global_id(0);
-    for (int i = 0; i < counter; i++)
+    for (int i = 1; i <= counter; i++)
     {
-        a *= i * i;
+        a += i + i;
+        //a = a % 100;
 
     }
     output[id] = a;
-    if (id == 0)
+    //if (id == 0)
     //printf("cmp bound output: %d   %d\n", output[id], counter);
 }
 
@@ -48,7 +49,7 @@ kernel void mem_bound_kernel(const global char *input, const global char *input2
     {
         output[id] += input[id] + input2[id];
     }
-    if (id == 0)
+    //if (id == 0)
     //printf("mem bound output: %d\n", output[0]);
 }
 
