@@ -2,18 +2,21 @@ kernel void copy_buffer(const global char *input, global char *output)
 {
     const size_t id = get_global_id(0);
     output[id] = input[id];
+    //printf("mem bound output: %c\n", output[id]);
 }
 
 kernel void add_buffers(const global char *input, const global char *input2, global char *output)
 {
     const size_t id = get_global_id(0);
     output[id] = input[id] + input2[id];
+    //printf("mem bound output: %c\n", output[id]);
 }
 
 kernel void mul_buffers(const global char *input, const global char *input2, global char *output)
 {
     const size_t id = get_global_id(0);
     output[id] = input[id] * input2[id];
+    //printf("mem bound output: %c\n", output[id]);
 }
 
 kernel void heavy(const global char *input, global char *output)
@@ -26,20 +29,26 @@ kernel void heavy(const global char *input, global char *output)
 
 kernel void cmp_bound_kernel(const global char *input, const global char *input2, global char *output, int counter)
 {
-    long int a = 1;
+    int a = 1;
+    const size_t id = get_global_id(0);
     for (int i = 0; i < counter; i++)
     {
-        a = i * a * a;
+        a *= i * i;
 
     }
-    output[0] = a;
+    output[id] = a;
+    if (id == 0)
+    //printf("cmp bound output: %d   %d\n", output[id], counter);
 }
 
 kernel void mem_bound_kernel(const global char *input, const global char *input2, global char *output, int counter)
 {
+    const size_t id = get_global_id(0);
     for (int i = 0; i < counter; i++)
     {
-        output[i] = input[i] + input2[i];
+        output[id] += input[id] + input2[id];
     }
+    if (id == 0)
+    //printf("mem bound output: %d\n", output[0]);
 }
 
