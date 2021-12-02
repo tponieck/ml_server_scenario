@@ -18,7 +18,7 @@
 #include <algorithm>
 #include "ze_info/zenon.hpp"
 #include <memory>
-#include "boost\lockfree\queue.hpp"
+#include "boost/lockfree/queue.hpp"
 
 class server
 {
