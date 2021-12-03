@@ -387,9 +387,10 @@ void zenon::create_cmd_list()
     group_count.groupCountZ = 1;
 
     kernel_names.clear();
-    uint32_t number_of_kernels;
     if (!resnet)
     {
+        uint32_t number_of_kernels = 40;
+
         for (int i = 0; i < number_of_kernels + 2; i++)
         {
             zeCommandListAppendEventReset(command_list, kernel_ts_event[i]);
@@ -399,7 +400,7 @@ void zenon::create_cmd_list()
         submit_kernel_to_cmd_list(add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { nullptr }, 0);
         submit_kernel_to_cmd_list(add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[2], { nullptr }, 0);
 
-        number_of_kernels = 40;
+        
 
         for (int i = 1; i < number_of_kernels; i++)
         {
