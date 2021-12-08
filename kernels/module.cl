@@ -49,4 +49,3 @@ kernel void set_n_to_output(const global char *input, const global char *input2,
     const size_t id = get_global_id(0);
     output[id] = n;
 }
-
