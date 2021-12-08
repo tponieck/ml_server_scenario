@@ -311,7 +311,7 @@ void zenon::submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel,
     if (_kernel == cmp_bound_kernel) {
         counter = (int)(time_in_nanoseconds * 0.0114416 - 37.4022);
     }
-    else if (_kernel == cmp_bound_kernel) {
+    else if (_kernel == mem_bound_kernel) {
             counter = (int)(time_in_nanoseconds * 0.01133048 - 256.87);
         } 
     else if (_kernel == set_n_to_output) {
@@ -397,80 +397,43 @@ void zenon::create_cmd_list()
     kernel_names.clear();
     if (!resnet)
     {
+        uint32_t number_of_kernels = 40;
+        for (int i = 0; i < number_of_kernels + 2; i++)
+        {
+            zeCommandListAppendEventReset(command_list, kernel_ts_event[i]);
+        }
         if (disable_blitter) {
-            uint32_t number_of_kernels = 40;
-
-            for (int i = 0; i < number_of_kernels + 2; i++)
-            {
-                zeCommandListAppendEventReset(command_list, kernel_ts_event[i]);
-            }
-
             submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0, 1);
             submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { nullptr }, 0, 2);
             submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[2], { nullptr }, 0, 3);
-
-
-
-            for (int i = 1; i < number_of_kernels; i++)
-            {
-                if (i % 3 == 0)
-                    submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf1, im_buf2 }, im_buf3, kernel_ts_event[i + 2], { &kernel_ts_event[i] , &kernel_ts_event[i + 1] }, 2);
-                if (i % 3 == 1)
-                    submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf3, im_buf2 }, im_buf1, kernel_ts_event[i + 2], { &kernel_ts_event[i] , &kernel_ts_event[i + 1] }, 2);
-                if (i % 3 == 2)
-                    submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf1, im_buf3 }, im_buf2, kernel_ts_event[i + 2], { &kernel_ts_event[i] , &kernel_ts_event[i + 1] }, 2);
-            }
-
-            submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf3, im_buf2 }, output_buffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
-            SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
-
-            //Output copy engine
-            output_copy_command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
-            output_copy_command_list_descriptor.pNext = nullptr;
-            output_copy_command_list_descriptor.flags = 0;
-            output_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
-
-            SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &output_copy_command_list_descriptor, &output_copy_command_list));
-            SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output->data(), output_buffer, allocSize, nullptr, 1, &kernel_ts_event[number_of_kernels + 2]));
-            SUCCESS_OR_TERMINATE(zeCommandListClose(output_copy_command_list));
         }
         else {
-            uint32_t number_of_kernels = 40;
-
-            for (int i = 0; i < number_of_kernels + 2; i++)
-            {
-                zeCommandListAppendEventReset(command_list, kernel_ts_event[i]);
-            }
-
             submit_kernel_to_cmd_list(add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0);
             submit_kernel_to_cmd_list(add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { nullptr }, 0);
             submit_kernel_to_cmd_list(add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[2], { nullptr }, 0);
-
-
-
-            for (int i = 1; i < number_of_kernels; i++)
-            {
-                if (i % 3 == 0)
-                    submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf1, im_buf2 }, im_buf3, kernel_ts_event[i + 2], { &kernel_ts_event[i] , &kernel_ts_event[i + 1] }, 2);
-                if (i % 3 == 1)
-                    submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf3, im_buf2 }, im_buf1, kernel_ts_event[i + 2], { &kernel_ts_event[i] , &kernel_ts_event[i + 1] }, 2);
-                if (i % 3 == 2)
-                    submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf1, im_buf3 }, im_buf2, kernel_ts_event[i + 2], { &kernel_ts_event[i] , &kernel_ts_event[i + 1] }, 2);
-            }
-
-            submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf3, im_buf2 }, output_buffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
-            SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
-
-            //Output copy engine
-            output_copy_command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
-            output_copy_command_list_descriptor.pNext = nullptr;
-            output_copy_command_list_descriptor.flags = 0;
-            output_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
-
-            SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &output_copy_command_list_descriptor, &output_copy_command_list));
-            SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output->data(), output_buffer, allocSize, nullptr, 1, &kernel_ts_event[number_of_kernels + 2]));
-            SUCCESS_OR_TERMINATE(zeCommandListClose(output_copy_command_list));
         }
+        for (int i = 1; i < number_of_kernels; i++)
+        {
+            if (i % 3 == 0)
+                submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf1, im_buf2 }, im_buf3, kernel_ts_event[i + 2], { &kernel_ts_event[i] , &kernel_ts_event[i + 1] }, 2);
+            if (i % 3 == 1)
+                submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf3, im_buf2 }, im_buf1, kernel_ts_event[i + 2], { &kernel_ts_event[i] , &kernel_ts_event[i + 1] }, 2);
+            if (i % 3 == 2)
+                submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf1, im_buf3 }, im_buf2, kernel_ts_event[i + 2], { &kernel_ts_event[i] , &kernel_ts_event[i + 1] }, 2);
+        }
+
+        submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf3, im_buf2 }, output_buffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
+        SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
+
+        //Output copy engine
+        output_copy_command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
+        output_copy_command_list_descriptor.pNext = nullptr;
+        output_copy_command_list_descriptor.flags = 0;
+        output_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
+
+        SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &output_copy_command_list_descriptor, &output_copy_command_list));
+        SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output->data(), output_buffer, allocSize, nullptr, 1, &kernel_ts_event[number_of_kernels + 2]));
+        SUCCESS_OR_TERMINATE(zeCommandListClose(output_copy_command_list));
     }
     else {
         for (int i = 0; i < 54; i++)
