@@ -36,6 +36,7 @@ void check_caps()
 extern bool verbose;
 extern bool profiling;
 extern bool resnet;
+extern bool disable_blitter;
 
 void print_help()
 {
@@ -51,6 +52,7 @@ void print_help()
     std::cout << "--verbose         - verbose" << std::endl;
     std::cout << "--profiling       - gpu kernel stats" << std::endl;
     std::cout << "--resnet          - run resnet 50 simulation" << std::endl;
+    std::cout << "--disable_blitter - disable blitter on input" << std::endl;
 }
 
 int main(int argc, const char **argv) {
@@ -69,6 +71,7 @@ int main(int argc, const char **argv) {
     profiling = false;
     verbose = false;
     resnet = false;
+    disable_blitter = false;
 
 
     for( int i = 1; i < argc ; i++)
@@ -119,6 +122,10 @@ int main(int argc, const char **argv) {
         else if( !strcmp( argv[ i ], "--resnet" ) )
         {
             resnet = true;
+        }
+        else if (!strcmp(argv[i], "--disable_blitter"))
+        {
+            disable_blitter = true;
         }
         /*else if (!strcmp(argv[i], "--run_mt"))
         {

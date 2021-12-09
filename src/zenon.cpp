@@ -25,10 +25,11 @@
 #include "ze_info/zenon.hpp"
 #include "ze_info/ze_utils.hpp"
 
-extern bool verbose, profiling, resnet;
+extern bool verbose, profiling, resnet, disable_blitter;
 bool verbose = false;
 bool profiling = false;
 bool resnet = false;
+bool disable_blitter = false;
 
 zenon::zenon(bool _log)
 {
@@ -231,6 +232,9 @@ void zenon::create_module(const std::string& cl_file_path)
 
     kernel_descriptor.pKernelName = "mem_bound_kernel";
     SUCCESS_OR_TERMINATE(zeKernelCreate(module, &kernel_descriptor, &mem_bound_kernel));
+
+    kernel_descriptor.pKernelName = "set_n_to_output";
+    SUCCESS_OR_TERMINATE(zeKernelCreate(module, &kernel_descriptor, &set_n_to_output));
 }
 
 void zenon::allocate_buffers()
@@ -307,9 +311,13 @@ void zenon::submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel,
     if (_kernel == cmp_bound_kernel) {
         counter = (int)(time_in_nanoseconds * 0.0114416 - 37.4022);
     }
-    else {
-        counter = (int)(time_in_nanoseconds * 0.01133048 - 256.87);
+    else if (_kernel == mem_bound_kernel) {
+            counter = (int)(time_in_nanoseconds * 0.01133048 - 256.87);
+        } 
+    else if (_kernel == set_n_to_output) {
+        counter = time_in_nanoseconds;
     }
+    
     for (int i = 0; i < input.size(); i++)
     {
         SUCCESS_OR_TERMINATE(zeKernelSetArgumentValue(_kernel, param_cnt++, sizeof(input1_buffer), &input.at(i)));
@@ -390,18 +398,20 @@ void zenon::create_cmd_list()
     if (!resnet)
     {
         uint32_t number_of_kernels = 40;
-
         for (int i = 0; i < number_of_kernels + 2; i++)
         {
             zeCommandListAppendEventReset(command_list, kernel_ts_event[i]);
         }
-
-        submit_kernel_to_cmd_list(add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0);
-        submit_kernel_to_cmd_list(add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { nullptr }, 0);
-        submit_kernel_to_cmd_list(add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[2], { nullptr }, 0);
-
-        
-
+        if (disable_blitter) {
+            submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0, 1);
+            submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { nullptr }, 0, 2);
+            submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[2], { nullptr }, 0, 3);
+        }
+        else {
+            submit_kernel_to_cmd_list(add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0);
+            submit_kernel_to_cmd_list(add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { nullptr }, 0);
+            submit_kernel_to_cmd_list(add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[2], { nullptr }, 0);
+        }
         for (int i = 1; i < number_of_kernels; i++)
         {
             if (i % 3 == 0)
