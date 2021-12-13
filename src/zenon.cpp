@@ -161,7 +161,7 @@ void zenon::init()
 zenon::~zenon()
 {
     zenon_cntr--;
-
+    if(!disable_blitter)
     SUCCESS_OR_TERMINATE( zeCommandListDestroy( input_copy_command_list ) );
 
     SUCCESS_OR_TERMINATE( zeCommandQueueDestroy( input_copy_command_queue ) );
@@ -365,17 +365,18 @@ void zenon::create_cmd_list()
     auto allocSize = sizeof(uint8_t) * input1->size();
 
     //input copy engine
-    input_copy_command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
-    input_copy_command_list_descriptor.pNext = nullptr;
-    input_copy_command_list_descriptor.flags = 0;
-    input_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
-    SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &input_copy_command_list_descriptor, &input_copy_command_list));
-
-    SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(input_copy_command_list, input1_buffer, input1->data(), allocSize, nullptr, 0, nullptr));
-    SUCCESS_OR_TERMINATE(zeCommandListAppendBarrier(input_copy_command_list, nullptr, 0, nullptr));
-    SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(input_copy_command_list, input2_buffer, input2->data(), allocSize, nullptr, 0, nullptr));
-    SUCCESS_OR_TERMINATE(zeCommandListAppendBarrier(input_copy_command_list, nullptr, 0, nullptr));
-    SUCCESS_OR_TERMINATE(zeCommandListClose(input_copy_command_list));
+    if (!disable_blitter) {
+        input_copy_command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
+        input_copy_command_list_descriptor.pNext = nullptr;
+        input_copy_command_list_descriptor.flags = 0;
+        input_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
+        SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &input_copy_command_list_descriptor, &input_copy_command_list));
+        SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(input_copy_command_list, input1_buffer, input1->data(), allocSize, nullptr, 0, nullptr));
+        SUCCESS_OR_TERMINATE(zeCommandListAppendBarrier(input_copy_command_list, nullptr, 0, nullptr));
+        SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(input_copy_command_list, input2_buffer, input2->data(), allocSize, nullptr, 0, nullptr));
+        SUCCESS_OR_TERMINATE(zeCommandListAppendBarrier(input_copy_command_list, nullptr, 0, nullptr));
+        SUCCESS_OR_TERMINATE(zeCommandListClose(input_copy_command_list));
+    }
 
     //compute engine
     uint32_t group_size_x = 0;
@@ -513,9 +514,10 @@ void zenon::create_cmd_list()
 
 gpu_results zenon::run(uint32_t clinet_id)
 {
-    SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( input_copy_command_queue, 1, &input_copy_command_list, nullptr ) );
-    SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( input_copy_command_queue, UINT64_MAX ) );
-
+    if (!disable_blitter) {
+        SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(input_copy_command_queue, 1, &input_copy_command_list, nullptr));
+        SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(input_copy_command_queue, UINT64_MAX));
+    }
     SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( command_queue, 1, &command_list, nullptr ) );
     SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( command_queue, UINT64_MAX ) );
 
