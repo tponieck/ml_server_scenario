@@ -30,6 +30,7 @@ file(GLOB_RECURSE SRC_FILES
 )
 
 link_directories(GLOB_RECURSE "${SRC_INCLUDE_PATH}/boost/")
+link_directories(GLOB_RECURSE "${SRC_INCLUDE_PATH}/CL/")
 
 # include libraries
 if(LINUX)
