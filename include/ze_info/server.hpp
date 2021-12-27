@@ -34,6 +34,7 @@ public:
             zenek[i] = new zenon(i, multi_ccs, log);
             zenek[i]->create_module();
             zenek[i]->allocate_buffers();
+            zenek[i]->create_cl_context();
             zenek[i]->create_cmd_list();
             zenek_pool_boost.push(zenek[i]);
         }

@@ -425,7 +425,21 @@ void zenon::create_cmd_list()
 
         submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf3, im_buf2 }, output_buffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
         SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
+        
+        printf("%p\n", shared_output);
+        printf("%p\n", output_buffer);
 
+       /* printf("%x\n", output_buffer);
+        printf("%x\n", im_buf2);
+        printf("%x\n", im_buf3);
+        printf("%x\n", output);
+
+        for (auto var : *output) {
+            printf("%x\t", var);
+        }
+        printf("\n");*/
+
+        
         //Output copy engine
         output_copy_command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
         output_copy_command_list_descriptor.pNext = nullptr;
@@ -553,6 +567,35 @@ gpu_results zenon::run(uint32_t clinet_id)
         std::cout << std::endl;
     }
     return gpu_result;
+}
+void zenon::create_cl_context() {
+
+    clGetPlatformIDs(0, NULL, &numPlatforms);
+    clSelectedPlatformID = (cl_platform_id*)malloc(sizeof(cl_platform_id) * numPlatforms);
+    err = clGetPlatformIDs(numPlatforms, clSelectedPlatformID, NULL);
+
+    //get Device
+    err = clGetDeviceIDs(clSelectedPlatformID[0], CL_DEVICE_TYPE_GPU, 1, &device_id, NULL);
+    if (err != CL_SUCCESS)
+    {
+        printf("Error: Failed to create a device group!\n");
+        //return EXIT_FAILURE;
+    }
+
+    //create context
+    clcontext = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
+    if (!context)
+    {
+        printf("Error: Failed to create a compute context!\n");
+        //return EXIT_FAILURE;
+    }
+
+
+    shared_output = clCreateBuffer(clcontext,
+        (CL_MEM_ALLOC_HOST_PTR, CL_MEM_READ_WRITE),
+        sizeof(output_buffer),
+        output_buffer,
+        nullptr);
 }
 
 bool zenon::ze_initalized = false;

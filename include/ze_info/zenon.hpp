@@ -17,6 +17,7 @@
 #include "ze_api.h"
 #include "ze_info/offline_compiler.hpp"
 #include "ze_info/utils.hpp"
+#include "CL/cl.h"
 
 #define MAX_EVENTS_COUNT 55
 
@@ -55,12 +56,19 @@ public:
     void init();
     int get_id() { return id; };
     int get_ccs_id() { return ccs_id; };
+    void create_cl_context();
 
 private:
     static bool ze_initalized;
     bool log;
     bool multi_ccs = true;
     void* input1_buffer = nullptr, * input2_buffer = nullptr, * output_buffer = nullptr, * im_buf1 = nullptr, * im_buf2 = nullptr, * im_buf3 = nullptr, * im_buf4 = nullptr, * im_buf5 = nullptr, * im_buf6 = nullptr;
+    cl_context clcontext;
+    cl_mem shared_output = nullptr;
+    cl_device_id device_id;
+    cl_uint numPlatforms;
+    cl_platform_id* clSelectedPlatformID = NULL;
+    int err;
 
     std::vector<uint8_t>* input1;
     std::vector<uint8_t>* input2;
