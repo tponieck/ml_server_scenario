@@ -418,9 +418,8 @@ void zenon::create_cmd_list()
         submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf3, im_buf2 }, output_buffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
         SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
 
-        memset(sharedBuffer, (int)output_buffer, allocSize);
+        memset(sharedBuffer, (intptr_t)output_buffer, allocSize);
 
-        printf(" %p \n %p \n", sharedBuffer, output_buffer);
 
 
         //Output copy engine
@@ -432,7 +431,8 @@ void zenon::create_cmd_list()
         SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &output_copy_command_list_descriptor, &output_copy_command_list));
         SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output->data(), output_buffer, allocSize, nullptr, 1, &kernel_ts_event[number_of_kernels + 2]));
         SUCCESS_OR_TERMINATE(zeCommandListClose(output_copy_command_list));
-        printf(" %p \n", output);
+        printf(" %p \n %p \n", sharedBuffer, output);
+
 
     }
     else {
