@@ -44,3 +44,9 @@ kernel void mem_bound_kernel(const global char *input, const global char *input2
     }
 }
 
+kernel void set_n_to_output(const global char *input, const global char *input2, global char *output, int n)
+{
+    const size_t id = get_global_id(0);
+    output[id] = n;
+}
+

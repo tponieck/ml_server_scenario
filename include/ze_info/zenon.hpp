@@ -90,6 +90,7 @@ private:
     ze_kernel_handle_t mul_buffers_kernel = nullptr;
     ze_kernel_handle_t cmp_bound_kernel = nullptr;
     ze_kernel_handle_t mem_bound_kernel = nullptr;
+    ze_kernel_handle_t set_n_to_output = nullptr;
     
     ze_device_mem_alloc_desc_t memory_descriptor = {};
     ze_command_list_desc_t command_list_descriptor = {};
