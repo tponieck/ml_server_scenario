@@ -415,10 +415,10 @@ void zenon::create_cmd_list()
                 submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf1, im_buf3 }, im_buf2, kernel_ts_event[i + 2], { &kernel_ts_event[i] , &kernel_ts_event[i + 1] }, 2);
         }
 
-        submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf3, im_buf2 }, output_buffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
+        submit_kernel_to_cmd_list(kernel, {im_buf3}, output_buffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
         SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
 
-        memset(sharedBuffer, (intptr_t)output_buffer, allocSize);
+        
 
 
 
@@ -431,7 +431,7 @@ void zenon::create_cmd_list()
         SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &output_copy_command_list_descriptor, &output_copy_command_list));
         SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output->data(), output_buffer, allocSize, nullptr, 1, &kernel_ts_event[number_of_kernels + 2]));
         SUCCESS_OR_TERMINATE(zeCommandListClose(output_copy_command_list));
-        printf(" %p \n %p \n", sharedBuffer, output);
+        
 
 
     }
@@ -518,7 +518,7 @@ gpu_results zenon::run(uint32_t clinet_id)
 
     SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( command_queue, 1, &command_list, nullptr ) );
     SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( command_queue, UINT64_MAX ) );
-
+    
     SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( output_copy_command_queue, 1, &output_copy_command_list, nullptr ) );
     SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( output_copy_command_queue, UINT64_MAX ) );
 
@@ -544,11 +544,26 @@ gpu_results zenon::run(uint32_t clinet_id)
 
     if (log) {
         std::cout << "Output:\n";
-        for (auto var : *output)
+        /*for (auto var : *output)
         {
             std::cout << (int)var << " ";
         }
-        std::cout << std::endl;
+        std::cout << std::endl;*/
+        memset(sharedBuffer, (intptr_t)output_buffer, sizeof(output_buffer));
+        printf(" %p \n %p \n", sharedBuffer, output);
+
+        auto castedSharedBuffer = reinterpret_cast<uint64_t*>(sharedBuffer);
+        char* a2 = (char*)(castedSharedBuffer);
+        std::cout << a2 << std::endl;
+       
+        for (int i = 0; i < 4; i++) {
+            std::cout << a2[i] << "\t";
+        }
+
+        printf("\n");
+
+
+
     }
     return gpu_result;
 }
