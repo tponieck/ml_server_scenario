@@ -265,6 +265,9 @@ void zenon::allocate_buffers()
     SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
         alloc_size, 1, device, &im_buf6 ) );
 
+    hostDesc.flags = ZE_HOST_MEM_ALLOC_FLAG_BIAS_UNCACHED;
+    SUCCESS_OR_TERMINATE(zeMemAllocShared(context, &memory_descriptor, &hostDesc, alloc_size, 1, device, &sharedBuffer));
+
 }
 
 void zenon::submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel,
@@ -415,6 +418,11 @@ void zenon::create_cmd_list()
         submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf3, im_buf2 }, output_buffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
         SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
 
+        memset(sharedBuffer, (int)output_buffer, allocSize);
+
+        printf(" %p /n %p /n", sharedBuffer, output_buffer);
+
+
         //Output copy engine
         output_copy_command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
         output_copy_command_list_descriptor.pNext = nullptr;
@@ -424,6 +432,8 @@ void zenon::create_cmd_list()
         SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &output_copy_command_list_descriptor, &output_copy_command_list));
         SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output->data(), output_buffer, allocSize, nullptr, 1, &kernel_ts_event[number_of_kernels + 2]));
         SUCCESS_OR_TERMINATE(zeCommandListClose(output_copy_command_list));
+        printf(" %p /n", output);
+
     }
     else {
         for (int i = 0; i < 54; i++)
@@ -542,6 +552,8 @@ gpu_results zenon::run(uint32_t clinet_id)
     }
     return gpu_result;
 }
+
+
 
 bool zenon::ze_initalized = false;
 std::vector<ze_driver_handle_t> zenon::drivers;
