@@ -554,22 +554,12 @@ gpu_results zenon::run(uint32_t clinet_id)
             std::cout << (int)var << " ";
         }
         std::cout << std::endl;*/
-        
-        printf(" %p \n %p \n", sharedBuffer, output);
-
         auto castedSharedBuffer = reinterpret_cast<uint64_t*>(sharedBuffer);
-        char* a2 = (char*)(castedSharedBuffer);
-        std::cout << a2 << std::endl;
-       
+        uint8_t* a2 = (uint8_t*)(castedSharedBuffer);
         for (int i = 0; i < 32; i++) {
-            std::cout << a2[i] << " ";
+            std::cout << (unsigned)a2[i] << " ";
         }
-
-
         printf("\n");
-
-
-
     }
     return gpu_result;
 }
