@@ -415,7 +415,7 @@ void zenon::create_cmd_list()
                 submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf1, im_buf3 }, im_buf2, kernel_ts_event[i + 2], { &kernel_ts_event[i] , &kernel_ts_event[i + 1] }, 2);
         }
 
-        submit_kernel_to_cmd_list(kernel, {im_buf3}, output_buffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
+        submit_kernel_to_cmd_list(kernel, {im_buf3}, sharedBuffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
         SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
 
         
@@ -549,15 +549,15 @@ gpu_results zenon::run(uint32_t clinet_id)
             std::cout << (int)var << " ";
         }
         std::cout << std::endl;*/
-        memset(sharedBuffer, (intptr_t)output_buffer, sizeof(output_buffer));
+        //memset(sharedBuffer, (intptr_t)output_buffer, sizeof(output_buffer));
         printf(" %p \n %p \n", sharedBuffer, output);
 
         auto castedSharedBuffer = reinterpret_cast<uint64_t*>(sharedBuffer);
         char* a2 = (char*)(castedSharedBuffer);
         std::cout << a2 << std::endl;
        
-        for (int i = 0; i < 4; i++) {
-            std::cout << a2[i] << "\t";
+        for (int i = 0; i < 32; i++) {
+            std::cout << a2[i] << " ";
         }
 
         printf("\n");
