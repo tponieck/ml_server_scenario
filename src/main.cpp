@@ -52,7 +52,7 @@ void print_help()
     std::cout << "--verbose         - verbose" << std::endl;
     std::cout << "--profiling       - gpu kernel stats" << std::endl;
     std::cout << "--resnet          - run resnet 50 simulation" << std::endl;
-    std::cout << "--disable_blitter - disable blitter on input" << std::endl;
+    std::cout << "--disable_blitter - disable blitter" << std::endl;
 }
 
 int main(int argc, const char **argv) {
@@ -72,7 +72,6 @@ int main(int argc, const char **argv) {
     verbose = false;
     resnet = false;
     disable_blitter = false;
-
 
     for( int i = 1; i < argc ; i++)
     {
