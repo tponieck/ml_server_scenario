@@ -60,11 +60,10 @@ private:
     static bool ze_initalized;
     bool log;
     bool multi_ccs = true;
-    void* input1_buffer = nullptr, * input2_buffer = nullptr, * output_buffer = nullptr, * im_buf1 = nullptr, * im_buf2 = nullptr, * im_buf3 = nullptr, * im_buf4 = nullptr, * im_buf5 = nullptr, * im_buf6 = nullptr;
-    void* sharedBuffer = nullptr;
+    void* input1_buffer = nullptr, * input2_buffer = nullptr,* im_buf1 = nullptr, * im_buf2 = nullptr, * im_buf3 = nullptr, * im_buf4 = nullptr, * im_buf5 = nullptr, * im_buf6 = nullptr;
+    void* output_buffer = nullptr;
     ze_host_mem_alloc_desc_t hostDesc = { ZE_STRUCTURE_TYPE_HOST_MEM_ALLOC_DESC };
     
-
     std::vector<uint8_t>* input1;
     std::vector<uint8_t>* input2;
     std::vector<uint8_t>* output;
@@ -116,8 +115,6 @@ private:
     ze_kernel_timestamp_result_t kernel_ts_results[MAX_EVENTS_COUNT];
     uint32_t graph_event_count = 0;
     std::vector<std::string> kernel_names;
-
-
 };
 
 #endif
