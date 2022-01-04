@@ -31,10 +31,13 @@ public:
         zenek_pool_boost.reserve(pool_size);
         for (int i = 0; i < pool_size; i++)
         {
+            bool mixed = false;
+            if( i == 1 )
+                mixed = true;
             zenek[i] = new zenon(i, multi_ccs, log);
             zenek[i]->create_module();
             zenek[i]->allocate_buffers();
-            zenek[i]->create_cmd_list();
+            zenek[i]->create_cmd_list(mixed);
             zenek_pool_boost.push(zenek[i]);
         }
     }

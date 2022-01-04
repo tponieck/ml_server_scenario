@@ -36,6 +36,7 @@ zenon::zenon(bool _log)
     input1 = new std::vector<uint8_t>(INPUT_SIZE, 0);
     input2 = new std::vector<uint8_t>(INPUT_SIZE, 0);
     output = new std::vector<uint8_t>(INPUT_SIZE, 0);
+    output_resnet = new std::vector<uint8_t>( INPUT_SIZE, 0 );
     init();
 }
 
@@ -44,6 +45,7 @@ zenon::zenon( std::vector<uint8_t>* in1, std::vector<uint8_t>* in2, std::vector<
     input1 = in1;
     input2 = in2;
     output = out;
+    output_resnet = out;
     init();
 }
 
@@ -133,8 +135,8 @@ void zenon::init()
     if (log)
         std::cout << "command_queue_count: " << command_queue_count << std::endl;
 
-    if (!multi_ccs)
-        ccs_id = 0;
+    //if (!multi_ccs)
+    ccs_id = 0;
     command_queue_descriptor.index = ccs_id;
 
     SUCCESS_OR_TERMINATE(zeCommandQueueCreate(context, device, &command_queue_descriptor, &command_queue));
@@ -201,6 +203,7 @@ zenon::~zenon()
     delete input1;
     delete input2;
     delete output;
+    delete output_resnet;
 }
 
 void zenon::create_module(const std::string& cl_file_path)
@@ -231,6 +234,9 @@ void zenon::create_module(const std::string& cl_file_path)
 
     kernel_descriptor.pKernelName = "mem_bound_kernel";
     SUCCESS_OR_TERMINATE(zeKernelCreate(module, &kernel_descriptor, &mem_bound_kernel));
+
+    //kernel_descriptor.pKernelName = "copy_buffer_kernel";
+    //SUCCESS_OR_TERMINATE( zeKernelCreate( module, &kernel_descriptor, &copy_buffer_kernel ) );
 }
 
 void zenon::allocate_buffers()
@@ -352,7 +358,7 @@ void createEventPoolAndEvents(ze_context_handle_t& context,
     }
 }
 
-void zenon::create_cmd_list()
+void zenon::create_cmd_list(bool mixed)
 {
     auto allocSize = sizeof(uint8_t) * input1->size();
 
@@ -361,6 +367,15 @@ void zenon::create_cmd_list()
     input_copy_command_list_descriptor.pNext = nullptr;
     input_copy_command_list_descriptor.flags = 0;
     input_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
+
+    hostDesc.stype = ZE_STRUCTURE_TYPE_HOST_MEM_ALLOC_DESC;
+    hostDesc.pNext = nullptr;
+    hostDesc.flags = 0;
+    //SUCCESS_OR_TERMINATE( zeMemAllocShared( context, &memory_descriptor, &hostDesc, allocSize, 1, device, &sharedBuffer_Resnet ) );
+    //SUCCESS_OR_TERMINATE( zeMemAllocShared( context, &memory_descriptor, &hostDesc, allocSize, 1, device, &sharedBuffer ) );
+    SUCCESS_OR_TERMINATE( zeMemAllocHost( context, &hostDesc, allocSize, 1, (void**)( &sharedBuffer ) ) );
+    SUCCESS_OR_TERMINATE( zeMemAllocHost( context, &hostDesc, allocSize, 1, (void**)( &sharedBuffer_Resnet ) ) );
+
     SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &input_copy_command_list_descriptor, &input_copy_command_list));
 
     SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(input_copy_command_list, input1_buffer, input1->data(), allocSize, nullptr, 0, nullptr));
@@ -387,10 +402,11 @@ void zenon::create_cmd_list()
     group_count.groupCountZ = 1;
 
     kernel_names.clear();
-    uint32_t number_of_kernels;
-    if (!resnet)
+    uint32_t number_of_kernels = 51;
+    if (!resnet && !mixed)
     {
-        for (int i = 0; i < number_of_kernels + 2; i++)
+        std::cout << "STANDARD";
+        for (int i = 0; i < number_of_kernels + 0; i++)
         {
             zeCommandListAppendEventReset(command_list, kernel_ts_event[i]);
         }
@@ -399,7 +415,7 @@ void zenon::create_cmd_list()
         submit_kernel_to_cmd_list(add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { nullptr }, 0);
         submit_kernel_to_cmd_list(add_buffers_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[2], { nullptr }, 0);
 
-        number_of_kernels = 40;
+        number_of_kernels = 51;
 
         for (int i = 1; i < number_of_kernels; i++)
         {
@@ -411,9 +427,20 @@ void zenon::create_cmd_list()
                 submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf1, im_buf3 }, im_buf2, kernel_ts_event[i + 2], { &kernel_ts_event[i] , &kernel_ts_event[i + 1] }, 2);
         }
 
-        submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf3, im_buf2 }, output_buffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
+        submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf3, im_buf2 }, im_buf1, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
+
+        submit_kernel_to_cmd_list( kernel, { im_buf1 }, sharedBuffer, kernel_ts_event[ number_of_kernels + 3 ], { &kernel_ts_event[ number_of_kernels + 2 ] }, 1 );
+        std::cout << "Ok111:\n";
+        //submit_kernel_to_cmd_list( kernel, { im_buf6 }, sharedBuffer, kernel_ts_event[ 54 ], { &kernel_ts_event[ 53 ] }, 1);                              //<-res5c_branch2c
+        //submit_kernel_to_cmd_list( add_buffers_kernel, { im_buf6, im_buf3 }, sharedBuffer, kernel_ts_event[ 54 ], { &kernel_ts_event[ 53 ]  }, 1 );
+        std::cout << "Ok2222:\n";
+        //zeCommandListAppendBarrier( command_list, nullptr, 1, &kernel_ts_event[ number_of_kernels + 2 ] );
+        //SUCCESS_OR_TERMINATE( zeCommandListAppendMemoryCopy( command_list, output->data(), output_buffer, allocSize, kernel_ts_event[ number_of_kernels + 3 ], 1, &kernel_ts_event[ number_of_kernels + 2 ] ) );
+        //zeCommandListAppendBarrier( command_list, nullptr, 1, &kernel_ts_event[ number_of_kernels + 3 ] );
         SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
 
+
+        /*
         //Output copy engine
         output_copy_command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
         output_copy_command_list_descriptor.pNext = nullptr;
@@ -423,8 +450,10 @@ void zenon::create_cmd_list()
         SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &output_copy_command_list_descriptor, &output_copy_command_list));
         SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output->data(), output_buffer, allocSize, nullptr, 1, &kernel_ts_event[number_of_kernels + 2]));
         SUCCESS_OR_TERMINATE(zeCommandListClose(output_copy_command_list));
+        */
     }
     else {
+        std::cout << "RESNET";
         for (int i = 0; i < 54; i++)
         {
             zeCommandListAppendEventReset(command_list, kernel_ts_event[i]);
@@ -483,18 +512,25 @@ void zenon::create_cmd_list()
             submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[51], { &kernel_ts_event[50]}, 1, 29580);                               //<-res5c_branch2a
             submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[52], { &kernel_ts_event[51] }, 1, 55398);                              //<-res5c_branch2b
             submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[53], { &kernel_ts_event[52] }, 1, 27278);                              //<-res5c_branch2c
+
+            submit_kernel_to_cmd_list( heavy_kernel, { im_buf6 }, sharedBuffer_Resnet, kernel_ts_event[ 54 ], { &kernel_ts_event[ 53 ] }, 1 );
+
+            //submit_kernel_to_cmd_list( kernel, { im_buf6 }, sharedBuffer_Resnet, kernel_ts_event[ 54 ], { &kernel_ts_event[ 53 ] }, 1);                              //<-res5c_branch2c
            
             SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
-
+            /*
             //Output copy engine
             output_copy_command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
             output_copy_command_list_descriptor.pNext = nullptr;
             output_copy_command_list_descriptor.flags = 0;
             output_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
+            */
 
-            SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &output_copy_command_list_descriptor, &output_copy_command_list));
-            SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output->data(), im_buf6, allocSize, nullptr, 1, &kernel_ts_event[53]));
-            SUCCESS_OR_TERMINATE(zeCommandListClose(output_copy_command_list));
+            
+
+            //SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &output_copy_command_list_descriptor, &output_copy_command_list));
+            //SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output_resnet->data(), im_buf6, allocSize, nullptr, 1, &kernel_ts_event[53]));
+            //SUCCESS_OR_TERMINATE(zeCommandListClose(output_copy_command_list));
 
     }
     
@@ -506,10 +542,11 @@ gpu_results zenon::run(uint32_t clinet_id)
     SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( input_copy_command_queue, UINT64_MAX ) );
 
     SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( command_queue, 1, &command_list, nullptr ) );
+    //SUCCESS_OR_TERMINATE( zeEventHostSynchronize( kernel_ts_event[ 40 + 2 ], UINT64_MAX ) );
     SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( command_queue, UINT64_MAX ) );
 
-    SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( output_copy_command_queue, 1, &output_copy_command_list, nullptr ) );
-    SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( output_copy_command_queue, UINT64_MAX ) );
+    //SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( output_copy_command_queue, 1, &output_copy_command_list, nullptr ) );
+    //SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( output_copy_command_queue, UINT64_MAX ) );
 
     if( profiling )
     {
@@ -531,9 +568,30 @@ gpu_results zenon::run(uint32_t clinet_id)
         gpu_result.gpu_time = (kernel_ts_results[graph_event_count - 2].context.kernelEnd - kernel_ts_results[0].context.kernelStart) * timerResolution;
     }
 
+    if( log )
+    {
+        auto castedSharedBuffer = reinterpret_cast<uint64_t*>( sharedBuffer );
+        uint8_t* a2 = (uint8_t*)( castedSharedBuffer );
+
+        auto castedSharedBuffer_Resnet = reinterpret_cast<uint64_t*>( sharedBuffer_Resnet );
+        uint8_t* a22 = (uint8_t*)( castedSharedBuffer_Resnet );
+
+        for( int i = 0; i < 32; i++ )
+        {
+            std::cout << " ! " << sharedBuffer << "!" << castedSharedBuffer_Resnet << "!" << (unsigned)( a2[ i ] ) << " | " << (unsigned)( a22[ i ] ) << " ^ \n";
+        }
+        std::cout << std::endl;
+    }
+
     if (log) {
         std::cout << "Output:\n";
         for (auto var : *output)
+        {
+            std::cout << (int)var << " ";
+        }
+        std::cout << std::endl;
+        std::cout << "Output resnet:\n";
+        for( auto var : *output_resnet )
         {
             std::cout << (int)var << " ";
         }

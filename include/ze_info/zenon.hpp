@@ -48,9 +48,9 @@ public:
     std::vector<uint8_t>* get_input1() { return input1; };
     std::vector<uint8_t>* get_input2() { return input2; };
     std::vector<uint8_t>* get_output() { return output; };
-    void create_cmd_list();
+    void create_cmd_list(bool mixed);
     void submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t output_event, std::vector<ze_event_handle_t*> input_events, uint32_t input_event_count); 
-    void zenon::submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t output_event, std::vector<ze_event_handle_t*> input_events, uint32_t input_event_count, int counter);
+    void submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t output_event, std::vector<ze_event_handle_t*> input_events, uint32_t input_event_count, int counter);
     gpu_results run(uint32_t id);
     void init();
     int get_id() { return id; };
@@ -61,10 +61,13 @@ private:
     bool log;
     bool multi_ccs = true;
     void* input1_buffer = nullptr, * input2_buffer = nullptr, * output_buffer = nullptr, * im_buf1 = nullptr, * im_buf2 = nullptr, * im_buf3 = nullptr, * im_buf4 = nullptr, * im_buf5 = nullptr, * im_buf6 = nullptr;
+    void* sharedBuffer = nullptr;
+    void* sharedBuffer_Resnet = nullptr;
 
     std::vector<uint8_t>* input1;
     std::vector<uint8_t>* input2;
     std::vector<uint8_t>* output;
+    std::vector<uint8_t>* output_resnet;
     gpu_results gpu_result;
     int id, ccs_id;
     ze_result_t result = ZE_RESULT_SUCCESS;
@@ -87,6 +90,7 @@ private:
     ze_kernel_handle_t mul_buffers_kernel = nullptr;
     ze_kernel_handle_t cmp_bound_kernel = nullptr;
     ze_kernel_handle_t mem_bound_kernel = nullptr;
+    ze_kernel_handle_t copy_buffer_kernel = nullptr;
     
     ze_device_mem_alloc_desc_t memory_descriptor = {};
     ze_command_list_desc_t command_list_descriptor = {};
@@ -104,6 +108,8 @@ private:
     ze_command_list_handle_t output_copy_command_list;
     ze_command_queue_desc_t output_copy_command_queue_descriptor = {};
     ze_command_list_desc_t output_copy_command_list_descriptor = {};
+
+    ze_host_mem_alloc_desc_t hostDesc = { ZE_STRUCTURE_TYPE_HOST_MEM_ALLOC_DESC };
 
     static uint32_t command_queue_count, zenon_cntr;
 
