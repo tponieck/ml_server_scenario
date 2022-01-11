@@ -198,7 +198,7 @@ public:
         std::cout << "\nTime from 1st kernel start to last kernel end\t" << (kernels_ends - kernels_starts) / 1000 << " us \n\n";
         std::cout << "Total kernels time: Min: " << gpu_min << " us\t\t Max: " << gpu_max << " us \t\t Avg: " << gpu_avg_v << " us \n";
         std::cout << "Total GPU time:     Min: " << total_gpu_min << " us\t\t Max: " << total_gpu_max << " us \t\t Avg: " << total_gpu_avg << " us \n";
-
+        
     }
 
     double avg(std::vector<double> const& v)
