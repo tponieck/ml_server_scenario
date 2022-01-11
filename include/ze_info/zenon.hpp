@@ -26,6 +26,8 @@ struct gpu_results
     std::vector<std::string>  kernel_name;
     uint64_t execuction_time = 0;
     uint64_t gpu_time;
+    uint64_t kernels_start_time;
+    uint64_t kernels_end_time;
 };
 
 class zenon

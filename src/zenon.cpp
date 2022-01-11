@@ -551,6 +551,8 @@ gpu_results zenon::run(uint32_t clinet_id)
             gpu_result.kernel_time.push_back(kernelDuration);
             gpu_result.execuction_time += kernelDuration;
         }
+        gpu_result.kernels_start_time = kernel_ts_results[0].context.kernelStart * timerResolution;
+        gpu_result.kernels_end_time = kernel_ts_results[graph_event_count - 2].context.kernelStart * timerResolution;
         gpu_result.gpu_time = (kernel_ts_results[graph_event_count - 2].context.kernelEnd - kernel_ts_results[0].context.kernelStart) * timerResolution;
     }
 
