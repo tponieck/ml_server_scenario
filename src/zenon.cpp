@@ -431,6 +431,7 @@ void zenon::create_cmd_list()
         }
         
         submit_kernel_to_cmd_list(kernel, { im_buf3 }, output_buffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
+        global_kernel_ts_event.push_back(kernel_ts_event[number_of_kernels + 2]);
         SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
         if (!disable_blitter) {
             //Output copy engine
