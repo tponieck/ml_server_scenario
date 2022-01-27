@@ -134,7 +134,7 @@ void zenon::init()
     if (log)
         std::cout << "command_queue_count: " << command_queue_count << std::endl;
 
-    if (!multi_ccs)
+    //if (!multi_ccs)
         ccs_id = 0;
     command_queue_descriptor.index = ccs_id;
 
@@ -404,10 +404,11 @@ void zenon::create_cmd_list()
     if (!resnet)
     {
         uint32_t number_of_kernels = 40;
-        for (int i = 0; i < number_of_kernels + 2; i++)
+        for (int i = 0; i < number_of_kernels + 3; i++)
         {
             zeCommandListAppendEventReset(command_list, kernel_ts_event[i]);
         }
+        std::cout << "RESET\n";
         if (disable_blitter) {
             submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0, 1);
             submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { nullptr }, 0, 2);
@@ -439,6 +440,11 @@ void zenon::create_cmd_list()
 
             SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &output_copy_command_list_descriptor, &output_copy_command_list));
             SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output->data(), im_buf2, allocSize, nullptr, 1, &kernel_ts_event[number_of_kernels + 2]));
+
+            for( int i = 0; i < number_of_kernels + 3; i++ )
+            {
+                zeCommandListAppendEventReset( output_copy_command_list, kernel_ts_event[ i ] );
+            }
             SUCCESS_OR_TERMINATE(zeCommandListClose(output_copy_command_list));
         }
     }
@@ -529,7 +535,12 @@ gpu_results zenon::run(uint32_t clinet_id)
         SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(input_copy_command_queue, UINT64_MAX));
     }
     SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( command_queue, 1, &command_list, nullptr ) );
-    SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( command_queue, UINT64_MAX ) );
+    SUCCESS_OR_TERMINATE( zeEventHostSynchronize( kernel_ts_event[ 40 + 2 ], UINT64_MAX ) );
+    //SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( command_queue, UINT64_MAX ) );
+    for( int i = 0; i < 40 + 3; i++ )
+    {
+        zeEventHostReset( kernel_ts_event[ i ] );
+    }
     if (!disable_blitter) {
         SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(output_copy_command_queue, 1, &output_copy_command_list, nullptr));
         SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(output_copy_command_queue, UINT64_MAX));
