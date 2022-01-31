@@ -30,6 +30,7 @@ struct gpu_results
     uint64_t kernels_end_time;
 };
 
+
 class zenon
 {
 public:

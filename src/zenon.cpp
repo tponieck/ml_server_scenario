@@ -31,6 +31,8 @@ bool profiling = false;
 bool resnet = false;
 bool disable_blitter = false;
 
+std::vector <ze_event_handle_t> global_kernel_ts_event;
+
 zenon::zenon(bool _log)
 {
     log = _log;
@@ -429,6 +431,7 @@ void zenon::create_cmd_list()
         }
         
         submit_kernel_to_cmd_list(kernel, { im_buf3 }, output_buffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
+        global_kernel_ts_event.push_back(kernel_ts_event[number_of_kernels + 2]);
         SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
         if (!disable_blitter) {
             //Output copy engine
@@ -505,7 +508,8 @@ void zenon::create_cmd_list()
             submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[51], { &kernel_ts_event[50]}, 1, 29580);                               //<-res5c_branch2a
             submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[52], { &kernel_ts_event[51] }, 1, 55398);                              //<-res5c_branch2b
             submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, output_buffer, kernel_ts_event[53], { &kernel_ts_event[52] }, 1, 27278);                         //<-res5c_branch2c
-           
+            global_kernel_ts_event.push_back(kernel_ts_event[53]);
+
             SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
             if (!disable_blitter) {
                 //Output copy engine
@@ -529,7 +533,8 @@ gpu_results zenon::run(uint32_t clinet_id)
         SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(input_copy_command_queue, UINT64_MAX));
     }
     SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( command_queue, 1, &command_list, nullptr ) );
-    SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( command_queue, UINT64_MAX ) );
+    //SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( command_queue, UINT64_MAX ) );
+    SUCCESS_OR_TERMINATE(zeEventHostSynchronize(global_kernel_ts_event.at(clinet_id), UINT32_MAX));
     if (!disable_blitter) {
         SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(output_copy_command_queue, 1, &output_copy_command_list, nullptr));
         SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(output_copy_command_queue, UINT64_MAX));
