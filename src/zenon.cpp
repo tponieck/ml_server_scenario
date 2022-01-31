@@ -33,9 +33,10 @@ bool disable_blitter = false;
 
 std::vector <ze_event_handle_t> global_kernel_ts_event;
 
-zenon::zenon(bool _log)
+zenon::zenon(bool _log, bool _multi_ccs)
 {
     log = _log;
+    multi_ccs = _multi_ccs;
     input1 = new std::vector<uint8_t>(INPUT_SIZE, 0);
     input2 = new std::vector<uint8_t>(INPUT_SIZE, 0);
     output = new std::vector<uint8_t>(INPUT_SIZE, 0);
