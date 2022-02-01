@@ -23,10 +23,15 @@
 using namespace std::chrono;
 extern bool profiling;
 
+struct start_end_time {
+    high_resolution_clock::time_point start_time;
+    high_resolution_clock::time_point end_time;
+};
+
 class client
 {
 private:
-    int queries, qps;
+    int queries, qps, zenon_pool_size;
     std::vector<std::chrono::milliseconds> dist;
     std::vector<double> results;
     std::vector<double> gpu_time;
@@ -37,6 +42,7 @@ private:
     server serv;
     std::vector<gpu_results> gpu_results_vec;
     std::vector<uint64_t> total_gpu_time;
+    std::vector<start_end_time> start_end_time_vec;
 
     void create_distribution()
     {
@@ -85,17 +91,19 @@ private:
     }
 
 public:
-    client(int _queries, int _qps, int zenon_pool_size, bool multi_ccs, bool fixed_dist, bool _warm_up, bool log = false) :
-        serv(zenon_pool_size, multi_ccs, log)
+    client(int _queries, int _qps, int _zenon_pool_size, bool multi_ccs, bool fixed_dist, bool _warm_up, bool log = false) :
+        serv(_zenon_pool_size, multi_ccs, log)
     {
         queries = _queries;
         qps = _qps;
+        zenon_pool_size = _zenon_pool_size;
         dist.resize(queries);
         results.resize(queries);
         warm_up = _warm_up;
         logging = log;
         fixed_distribution = fixed_dist;
         gpu_results_vec.resize(queries);
+        start_end_time_vec.resize(queries);
         create_distribution();
     }
 
@@ -132,11 +140,12 @@ public:
             gpu_results_vec[qid] = serv.query_sample(qid);
         }
         catch (std::exception ex)
-        {    
+        {
             std::cout << ex.what();
         }
         high_resolution_clock::time_point end_time = high_resolution_clock::now();
         std::chrono::duration<double, std::micro> ms = end_time - start_time;
+        start_end_time_vec[qid] = { start_time, end_time };
         if (logging)
             std::cout << "thread:" << qid << " duration: " << ms.count() << std::endl;
 
@@ -186,7 +195,7 @@ public:
         std::cout << "\nTime from 1st kernel start to last kernel end\t" << (kernels_ends - kernels_starts) / 1000 << " us \n\n";
         std::cout << "Total kernels time: Min: " << gpu_min << " us\t\t Max: " << gpu_max << " us \t\t Avg: " << gpu_avg_v << " us \n";
         std::cout << "Total GPU time:     Min: " << total_gpu_min << " us\t\t Max: " << total_gpu_max << " us \t\t Avg: " << total_gpu_avg << " us \n";
-        
+
     }
 
     double avg(std::vector<double> const& v)
@@ -208,10 +217,31 @@ public:
         return total_gpu_time_vec;
     }
 
+    high_resolution_clock::time_point find_end_time(std::vector<start_end_time> start_end_time_vec) {
+        high_resolution_clock::time_point end_time = start_end_time_vec[0].start_time;
+        for (int i = 0; i < start_end_time_vec.size(); i++) {
+            if (end_time < start_end_time_vec[i].end_time) {
+                end_time = start_end_time_vec[i].end_time;
+            }
+        }
+        return end_time;
+    }
+
+    void save_result(double total_time) {
+        std::string filename = "./results.csv";
+        std::ofstream outfile;
+        outfile.open(filename, std::ofstream::out | std::ofstream::app);
+        outfile << "liczba threadow/kernel" << "," << "pamiec" << "," << "czas kerneli w ponkach" << "," << zenon_pool_size << "," << queries << "," << qps << "," << total_time << "\n";
+        outfile.close();
+    }
+
     void print_results()
     {
         double max = *std::max_element(results.begin(), results.end());
         double min = *std::min_element(results.begin(), results.end());
+        high_resolution_clock::time_point end_time = find_end_time(start_end_time_vec);
+        std::chrono::duration<double, std::micro> total_time = end_time - start_end_time_vec[0].start_time;
+        save_result(total_time.count());
         double avg_v = avg(results);
         if (profiling)
             print_profiling();
