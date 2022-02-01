@@ -35,8 +35,8 @@ class zenon
 {
 public:
     zenon(std::vector<uint8_t>* in, std::vector<uint8_t>* in2, std::vector<uint8_t>* out);
-    zenon(bool log = false);
-    zenon(int _id, bool multi_ccs_enable, bool _log = false) : zenon(_log)
+    zenon(bool log = false, bool multi_ccs = true);
+    zenon(int _id, bool multi_ccs_enable, bool _log = false) : zenon(_log, multi_ccs_enable)
     {
         multi_ccs = multi_ccs_enable;
         id = _id;
@@ -62,7 +62,7 @@ public:
 private:
     static bool ze_initalized;
     bool log;
-    bool multi_ccs = true;
+    bool multi_ccs;
     void* input1_buffer = nullptr, * input2_buffer = nullptr,* im_buf1 = nullptr, * im_buf2 = nullptr, * im_buf3 = nullptr, * im_buf4 = nullptr, * im_buf5 = nullptr, * im_buf6 = nullptr;
     void* output_buffer = nullptr;
     ze_host_mem_alloc_desc_t hostDesc = { ZE_STRUCTURE_TYPE_HOST_MEM_ALLOC_DESC };
