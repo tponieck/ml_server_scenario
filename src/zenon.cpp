@@ -27,11 +27,13 @@
 
 extern bool verbose, profiling, resnet, disable_blitter;
 extern float compute_bound_kernel_multiplier;
+extern short number_of_threads;
 bool verbose = false;
 bool profiling = false;
 bool resnet = false;
 bool disable_blitter = false;
 float compute_bound_kernel_multiplier = 1.0;
+short number_of_threads = 16;
 
 std::vector <ze_event_handle_t> global_kernel_ts_event;
 
@@ -392,7 +394,8 @@ void zenon::create_cmd_list()
     uint32_t group_size_x = 0;
     uint32_t group_size_y = 0;
     uint32_t group_size_z = 0;
-    SUCCESS_OR_TERMINATE(zeKernelSuggestGroupSize(kernel, input1->size(), 1U, 1U, &group_size_x, &group_size_y, &group_size_z));
+    SUCCESS_OR_TERMINATE(zeKernelSuggestGroupSize(kernel, input1->size() * number_of_threads, 1U, 1U, &group_size_x, &group_size_y, &group_size_z));
+    std::cout << number_of_threads << std::endl;
     SUCCESS_OR_TERMINATE(zeKernelSetGroupSize(kernel, group_size_x, group_size_y, group_size_z));
 
     command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;

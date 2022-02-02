@@ -38,6 +38,7 @@ extern bool profiling;
 extern bool resnet;
 extern bool disable_blitter;
 extern float compute_bound_kernel_multiplier;
+extern short number_of_threads;
 
 void print_help()
 {
@@ -55,13 +56,14 @@ void print_help()
     std::cout << "--resnet          - run resnet 50 simulation" << std::endl;
     std::cout << "--disable_blitter - disable blitter" << std::endl;
     std::cout << "--cbk_mul         - set multiplier of duration cmp_bound_kernel" << std::endl;
+    std::cout << "--t               - number of threads" << std::endl;
 }
 
 int main(int argc, const char **argv) {
 
     for (int i = 0; i < argc; i++)
         std::cout << argv[i] << " ";
-    std::cout << std::endl << argc << std::endl;
+    std::cout << std::endl;
 
     int queries = 100;
     int qps = 20;
@@ -75,6 +77,7 @@ int main(int argc, const char **argv) {
     resnet = false;
     disable_blitter = false;
     compute_bound_kernel_multiplier = 1.0;
+    number_of_threads = 16;
 
     for( int i = 1; i < argc; i++)
     {
@@ -133,6 +136,11 @@ int main(int argc, const char **argv) {
         else if (!strcmp(argv[i], "--disable_blitter"))
         {
             disable_blitter = true;
+        }
+        else if (!strcmp(argv[i], "--t"))
+        {
+            i++;
+            number_of_threads = atoi(argv[i]);
         }
         
         /*else if (!strcmp(argv[i], "--run_mt"))
