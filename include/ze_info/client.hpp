@@ -69,7 +69,7 @@ private:
                         file_correct = false;
                         break;
                     }
-                    dist[n] = std::chrono::milliseconds(value);
+                    dist[n] = std::chrono::microseconds(value);
                     n++;
                 }
                 if (file_correct)
@@ -82,7 +82,7 @@ private:
         std::mt19937 gen(rd());
         std::exponential_distribution<> d(qps);
         for (int n = 0; n < queries; ++n)
-            dist[n] = std::chrono::milliseconds((long long)(d(gen) * 1000));
+            dist[n] = std::chrono::microseconds((long long)(d(gen) * 1000000));
         if (fixed_distribution)
         {
             if (logging)
@@ -119,6 +119,8 @@ public:
         if (warm_up)
             run_single(0);
 
+        high_resolution_clock::time_point overall_start_time = high_resolution_clock::now();
+
         std::thread** thread_pool = new std::thread * [queries];
         for (int i = 0; i < queries; i++)
         {
@@ -131,6 +133,11 @@ public:
             thread_pool[i]->join();
             delete thread_pool[i];
         }
+
+        high_resolution_clock::time_point overall_end_time = high_resolution_clock::now();
+        std::chrono::duration<double, std::micro> overall = overall_end_time - overall_start_time;
+        std::cout << "Overall duration: " << overall.count() << std::endl;
+
         print_results();
         serv.delete_zenek();
     }

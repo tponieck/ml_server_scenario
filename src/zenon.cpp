@@ -413,10 +413,6 @@ void zenon::create_cmd_list()
     if (!resnet)
     {
         uint32_t number_of_kernels = 40;
-        for (int i = 0; i < number_of_kernels + 2; i++)
-        {
-            zeCommandListAppendEventReset(command_list, kernel_ts_event[i]);
-        }
         if (disable_blitter) {
             submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0, 1);
             submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { nullptr }, 0, 2);
@@ -453,10 +449,6 @@ void zenon::create_cmd_list()
         }
     }
     else {
-        for (int i = 0; i < 54; i++)
-        {
-            zeCommandListAppendEventReset(command_list, kernel_ts_event[i]);
-        }
         if (disable_blitter) {
             submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0, 1);
             submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { nullptr }, 0, 2);
@@ -540,8 +532,8 @@ gpu_results zenon::run(uint32_t clinet_id)
         SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(input_copy_command_queue, UINT64_MAX));
     }
     SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( command_queue, 1, &command_list, nullptr ) );
-    //SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( command_queue, UINT64_MAX ) );
-    SUCCESS_OR_TERMINATE(zeEventHostSynchronize(global_kernel_ts_event.at(clinet_id), UINT32_MAX));
+    SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( command_queue, UINT64_MAX ) );
+    //SUCCESS_OR_TERMINATE(zeEventHostSynchronize(global_kernel_ts_event.at(clinet_id), UINT32_MAX));
     if (!disable_blitter) {
         SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(output_copy_command_queue, 1, &output_copy_command_list, nullptr));
         SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(output_copy_command_queue, UINT64_MAX));
@@ -566,6 +558,11 @@ gpu_results zenon::run(uint32_t clinet_id)
         gpu_result.kernels_start_time = kernel_ts_results[0].context.kernelStart * timerResolution;
         gpu_result.kernels_end_time = kernel_ts_results[graph_event_count - 2].context.kernelStart * timerResolution;
         gpu_result.gpu_time = (kernel_ts_results[graph_event_count - 2].context.kernelEnd - kernel_ts_results[0].context.kernelStart) * timerResolution;
+    }
+
+    for( int i = 0; i < 54; i++ )
+    {
+        zeEventHostReset( kernel_ts_event[ i ] );
     }
 
     if (log) {
