@@ -71,7 +71,7 @@ private:
     std::deque<std::shared_ptr<zenon>> zenek_pool;
     std::vector<zenon*> zenek;
 
-    boost::lockfree::queue < zenon*/*, boost::lockfree::capacity<1>*/ > zenek_pool_boost;
+    boost::lockfree::queue < zenon* > zenek_pool_boost;
 
     void log(char* msg, int a = 0)
     {

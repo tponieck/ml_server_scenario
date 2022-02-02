@@ -37,6 +37,7 @@ extern bool verbose;
 extern bool profiling;
 extern bool resnet;
 extern bool disable_blitter;
+extern float compute_bound_kernel_multiplier;
 
 void print_help()
 {
@@ -53,13 +54,14 @@ void print_help()
     std::cout << "--profiling       - gpu kernel stats" << std::endl;
     std::cout << "--resnet          - run resnet 50 simulation" << std::endl;
     std::cout << "--disable_blitter - disable blitter" << std::endl;
+    std::cout << "--cbk_mul         - set multiplier of duration cmp_bound_kernel" << std::endl;
 }
 
 int main(int argc, const char **argv) {
 
     for (int i = 0; i < argc; i++)
         std::cout << argv[i] << " ";
-    std::cout << std::endl;
+    std::cout << std::endl << argc << std::endl;
 
     int queries = 100;
     int qps = 20;
@@ -72,8 +74,9 @@ int main(int argc, const char **argv) {
     verbose = false;
     resnet = false;
     disable_blitter = false;
+    compute_bound_kernel_multiplier = 1.0;
 
-    for( int i = 1; i < argc ; i++)
+    for( int i = 1; i < argc; i++)
     {
         if (!strcmp(argv[i],"--check_caps"))
         {
@@ -92,6 +95,11 @@ int main(int argc, const char **argv) {
         {
             i++;
             qps = atoi(argv[i]);
+        }
+        else if (!strcmp(argv[i], "--cbk_mul"))
+        {
+            i++;
+            compute_bound_kernel_multiplier = atof(argv[i]);
         }
         else if (!strcmp(argv[i], "--s"))
         {
@@ -126,6 +134,7 @@ int main(int argc, const char **argv) {
         {
             disable_blitter = true;
         }
+        
         /*else if (!strcmp(argv[i], "--run_mt"))
         {
             run_mt( queries, qps, consumers_count, multi_ccs, fixed_dist, warm_up, logging );

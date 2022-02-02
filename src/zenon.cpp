@@ -26,10 +26,12 @@
 #include "ze_info/ze_utils.hpp"
 
 extern bool verbose, profiling, resnet, disable_blitter;
+extern float compute_bound_kernel_multiplier;
 bool verbose = false;
 bool profiling = false;
 bool resnet = false;
 bool disable_blitter = false;
+float compute_bound_kernel_multiplier = 1.0;
 
 std::vector <ze_event_handle_t> global_kernel_ts_event;
 
@@ -317,7 +319,7 @@ void zenon::submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel,
     int counter = 0;
 
     if (_kernel == cmp_bound_kernel) {
-        counter = (int)(time_in_nanoseconds * 0.0114416 - 37.4022);
+        counter = (int)(time_in_nanoseconds * compute_bound_kernel_multiplier * 0.0114416 - 37.4022);
     }
     else if (_kernel == mem_bound_kernel) {
             counter = (int)(time_in_nanoseconds * 0.01133048 - 256.87);

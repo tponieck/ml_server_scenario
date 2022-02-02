@@ -22,6 +22,7 @@
 
 using namespace std::chrono;
 extern bool profiling;
+extern float compute_bound_kernel_multiplier;
 
 struct start_end_time {
     high_resolution_clock::time_point start_time;
@@ -231,7 +232,7 @@ public:
         std::string filename = "./results.csv";
         std::ofstream outfile;
         outfile.open(filename, std::ofstream::out | std::ofstream::app);
-        outfile << "liczba threadow/kernel" << "," << "pamiec" << "," << "czas kerneli w ponkach" << "," << zenon_pool_size << "," << queries << "," << qps << "," << total_time << "\n";
+        outfile << "liczba threadow/kernel*TBD" << "," << "pamiec*TBD" << "," << compute_bound_kernel_multiplier << "," << zenon_pool_size << "," << queries << "," << qps << "," << total_time << "\n";
         outfile.close();
     }
 
