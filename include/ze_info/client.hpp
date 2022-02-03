@@ -24,6 +24,7 @@ using namespace std::chrono;
 extern bool profiling;
 extern float compute_bound_kernel_multiplier;
 extern short number_of_threads;
+extern short memory_used_by_mem_bound_kernel;
 
 struct start_end_time {
     high_resolution_clock::time_point start_time;
@@ -240,7 +241,7 @@ public:
         }
         std::ofstream outfile;
         outfile.open(filename, std::ofstream::out | std::ofstream::app);
-        outfile << number_of_threads << "," << "memory" << "," << compute_bound_kernel_multiplier << "," << zenon_pool_size << "," << queries << "," << qps << "," << total_time << "\n";
+        outfile << number_of_threads << "," << memory_used_by_mem_bound_kernel << "," << compute_bound_kernel_multiplier << "," << zenon_pool_size << "," << queries << "," << qps << "," << total_time << "\n";
         outfile.close();
     }
 

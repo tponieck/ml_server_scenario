@@ -39,6 +39,7 @@ extern bool resnet;
 extern bool disable_blitter;
 extern float compute_bound_kernel_multiplier;
 extern short number_of_threads;
+extern short memory_used_by_mem_bound_kernel;
 
 void print_help()
 {
@@ -57,6 +58,7 @@ void print_help()
     std::cout << "--disable_blitter - disable blitter" << std::endl;
     std::cout << "--cbk_mul         - set multiplier of duration cmp_bound_kernel" << std::endl;
     std::cout << "--t               - number of threads" << std::endl;
+    std::cout << "--mem             - memory used by memory bound kernel in kB" << std::endl;
 }
 
 int main(int argc, const char **argv) {
@@ -78,6 +80,7 @@ int main(int argc, const char **argv) {
     disable_blitter = false;
     compute_bound_kernel_multiplier = 1.0;
     number_of_threads = 16;
+    memory_used_by_mem_bound_kernel = 4;
 
     for( int i = 1; i < argc; i++)
     {
@@ -103,6 +106,11 @@ int main(int argc, const char **argv) {
         {
             i++;
             compute_bound_kernel_multiplier = atof(argv[i]);
+        }
+        else if (!strcmp(argv[i], "--mem"))
+        {
+            i++;
+            memory_used_by_mem_bound_kernel = atoi(argv[i]);
         }
         else if (!strcmp(argv[i], "--s"))
         {

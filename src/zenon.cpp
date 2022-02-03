@@ -28,12 +28,14 @@
 extern bool verbose, profiling, resnet, disable_blitter;
 extern float compute_bound_kernel_multiplier;
 extern short number_of_threads;
+extern short memory_used_by_mem_bound_kernel;
 bool verbose = false;
 bool profiling = false;
 bool resnet = false;
 bool disable_blitter = false;
 float compute_bound_kernel_multiplier = 1.0;
 short number_of_threads = 16;
+short memory_used_by_mem_bound_kernel = 4;
 
 std::vector <ze_event_handle_t> global_kernel_ts_event;
 
@@ -324,7 +326,7 @@ void zenon::submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel,
         counter = (int)(time_in_nanoseconds * compute_bound_kernel_multiplier * 0.0114416 - 37.4022);
     }
     else if (_kernel == mem_bound_kernel) {
-            counter = (int)(time_in_nanoseconds * 0.01133048 - 256.87);
+            counter = (int)((time_in_nanoseconds * 0.01133048 - 256.87) * memory_used_by_mem_bound_kernel);
         } 
     else if (_kernel == set_n_to_output) {
         counter = time_in_nanoseconds;
