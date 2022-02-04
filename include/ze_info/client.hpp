@@ -34,7 +34,9 @@ struct start_end_time {
 class client
 {
 private:
+
     int queries, qps, zenon_pool_size;
+
     std::vector<std::chrono::microseconds> dist;
     std::vector<double> results;
     std::vector<double> gpu_time;
