@@ -20,7 +20,7 @@
 void check_caps()
 {
     const auto result = zeInit(0);
-    
+
     LOG_DEBUG << "Drivers initialized";
 
     const std::vector<ze_driver_handle_t> drivers = get_drivers();
@@ -37,6 +37,9 @@ extern bool verbose;
 extern bool profiling;
 extern bool resnet;
 extern bool disable_blitter;
+extern float compute_bound_kernel_multiplier;
+extern short number_of_threads;
+extern short memory_used_by_mem_bound_kernel;
 
 void print_help()
 {
@@ -53,9 +56,12 @@ void print_help()
     std::cout << "--profiling       - gpu kernel stats" << std::endl;
     std::cout << "--resnet          - run resnet 50 simulation" << std::endl;
     std::cout << "--disable_blitter - disable blitter" << std::endl;
+    std::cout << "--cbk_mul         - set multiplier of duration cmp_bound_kernel" << std::endl;
+    std::cout << "--t               - number of threads" << std::endl;
+    std::cout << "--mem             - memory used by memory bound kernel in kB" << std::endl;
 }
 
-int main(int argc, const char **argv) {
+int main(int argc, const char** argv) {
 
     for (int i = 0; i < argc; i++)
         std::cout << argv[i] << " ";
@@ -72,10 +78,13 @@ int main(int argc, const char **argv) {
     verbose = false;
     resnet = false;
     disable_blitter = false;
+    compute_bound_kernel_multiplier = 1.0;
+    number_of_threads = 16;
+    memory_used_by_mem_bound_kernel = 4;
 
-    for( int i = 1; i < argc ; i++)
+    for (int i = 1; i < argc; i++)
     {
-        if (!strcmp(argv[i],"--check_caps"))
+        if (!strcmp(argv[i], "--check_caps"))
         {
             check_caps();
         }
@@ -93,6 +102,16 @@ int main(int argc, const char **argv) {
             i++;
             qps = atoi(argv[i]);
         }
+        else if (!strcmp(argv[i], "--cbk_mul"))
+        {
+            i++;
+            compute_bound_kernel_multiplier = atof(argv[i]);
+        }
+        else if (!strcmp(argv[i], "--mem"))
+        {
+            i++;
+            memory_used_by_mem_bound_kernel = atoi(argv[i]);
+        }
         else if (!strcmp(argv[i], "--s"))
         {
             i++;
@@ -106,19 +125,19 @@ int main(int argc, const char **argv) {
         {
             fixed_dist = true;
         }
-        else if( !strcmp( argv[ i ], "--disable_wu" ) )
+        else if (!strcmp(argv[i], "--disable_wu"))
         {
             warm_up = false;
         }
-        else if( !strcmp( argv[ i ], "--verbose" ) )
+        else if (!strcmp(argv[i], "--verbose"))
         {
             verbose = true;
         }
-        else if( !strcmp( argv[ i ], "--profiling" ) )
+        else if (!strcmp(argv[i], "--profiling"))
         {
             profiling = true;
         }
-        else if( !strcmp( argv[ i ], "--resnet" ) )
+        else if (!strcmp(argv[i], "--resnet"))
         {
             resnet = true;
         }
@@ -126,6 +145,12 @@ int main(int argc, const char **argv) {
         {
             disable_blitter = true;
         }
+        else if (!strcmp(argv[i], "--t"))
+        {
+            i++;
+            number_of_threads = atoi(argv[i]);
+        }
+
         /*else if (!strcmp(argv[i], "--run_mt"))
         {
             run_mt( queries, qps, consumers_count, multi_ccs, fixed_dist, warm_up, logging );
@@ -138,7 +163,7 @@ int main(int argc, const char **argv) {
         }
     }
 
-    run_mt( queries, qps, consumers_count, multi_ccs, fixed_dist, warm_up, logging );
+    run_mt(queries, qps, consumers_count, multi_ccs, fixed_dist, warm_up, logging);
 
     return 0;
 
