@@ -38,10 +38,14 @@ kernel void cmp_bound_kernel(const global char *input, const global char *input2
 kernel void mem_bound_kernel(const global char *input, const global char *input2, global char *output, int counter)
 {
     const size_t id = get_global_id(0);
-    for (int i = 0; i < counter; i++)
+    uint a = 0;
+    uint b = 0;
+    for (int i = 0; i < 256 * counter; i++)
     {
-        output[id] += input[id] + input2[id];
+        a += i;
+        b += i;
     }
+    output[id] = a + b + input[id] + input2[id];
 }
 
 kernel void set_n_to_output(const global char *input, const global char *input2, global char *output, int n)

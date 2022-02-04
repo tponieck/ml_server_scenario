@@ -326,7 +326,7 @@ void zenon::submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel,
         counter = (int)(time_in_nanoseconds * compute_bound_kernel_multiplier * 0.0114416 - 37.4022);
     }
     else if (_kernel == mem_bound_kernel) {
-            counter = (int)((time_in_nanoseconds * 0.01133048 - 256.87) * memory_used_by_mem_bound_kernel);
+            counter = (int)(memory_used_by_mem_bound_kernel);
         } 
     else if (_kernel == set_n_to_output) {
         counter = time_in_nanoseconds;
@@ -396,8 +396,7 @@ void zenon::create_cmd_list()
     uint32_t group_size_x = 0;
     uint32_t group_size_y = 0;
     uint32_t group_size_z = 0;
-    SUCCESS_OR_TERMINATE(zeKernelSuggestGroupSize(kernel, input1->size() * number_of_threads, 1U, 1U, &group_size_x, &group_size_y, &group_size_z));
-    std::cout << number_of_threads << std::endl;
+    SUCCESS_OR_TERMINATE(zeKernelSuggestGroupSize(kernel, number_of_threads, 1U, 1U, &group_size_x, &group_size_y, &group_size_z));
     SUCCESS_OR_TERMINATE(zeKernelSetGroupSize(kernel, group_size_x, group_size_y, group_size_z));
 
     command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
