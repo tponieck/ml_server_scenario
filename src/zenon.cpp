@@ -26,10 +26,16 @@
 #include "ze_info/ze_utils.hpp"
 
 extern bool verbose, profiling, resnet, disable_blitter;
+extern float compute_bound_kernel_multiplier;
+extern short number_of_threads;
+extern short memory_used_by_mem_bound_kernel;
 bool verbose = false;
 bool profiling = false;
 bool resnet = false;
 bool disable_blitter = false;
+float compute_bound_kernel_multiplier = 1.0;
+short number_of_threads = 16;
+short memory_used_by_mem_bound_kernel = 4;
 
 std::vector <ze_event_handle_t> global_kernel_ts_event;
 
@@ -43,7 +49,7 @@ zenon::zenon(bool _log, bool _multi_ccs)
     init();
 }
 
-zenon::zenon( std::vector<uint8_t>* in1, std::vector<uint8_t>* in2, std::vector<uint8_t>* out )
+zenon::zenon(std::vector<uint8_t>* in1, std::vector<uint8_t>* in2, std::vector<uint8_t>* out)
 {
     input1 = in1;
     input2 = in2;
@@ -114,19 +120,19 @@ void zenon::init()
                 computeQueueGroupOrdinal = i;
             }
 
-            if( !( cmdqueueGroupProperties[ i ].flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE ) &&
-                ( cmdqueueGroupProperties[ i ].flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COPY ) )
+            if (!(cmdqueueGroupProperties[i].flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE) &&
+                (cmdqueueGroupProperties[i].flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COPY))
             {
                 copyOnlyQueueGroupOrdinal = i;
                 break;
             }
         }
 
-        command_queue_count = cmdqueueGroupProperties[ computeQueueGroupOrdinal ].numQueues;
+        command_queue_count = cmdqueueGroupProperties[computeQueueGroupOrdinal].numQueues;
 
         //if( !( device_properties.flags & ZE_DEVICE_PROPERTY_FLAG_INTEGRATED ) )
         //    command_queue_count += cmdqueueGroupProperties[ copyOnlyQueueGroupOrdinal ].numQueues;
-       
+
     }
 
     command_queue_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_QUEUE_DESC;
@@ -150,7 +156,7 @@ void zenon::init()
     input_copy_command_queue_descriptor.priority = ZE_COMMAND_QUEUE_PRIORITY_NORMAL;
     input_copy_command_queue_descriptor.ordinal = copyOnlyQueueGroupOrdinal;
     input_copy_command_queue_descriptor.index = 0;
-    SUCCESS_OR_TERMINATE( zeCommandQueueCreate( context, device, &input_copy_command_queue_descriptor, &input_copy_command_queue ) );
+    SUCCESS_OR_TERMINATE(zeCommandQueueCreate(context, device, &input_copy_command_queue_descriptor, &input_copy_command_queue));
 
     output_copy_command_queue_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_QUEUE_DESC;
     output_copy_command_queue_descriptor.pNext = nullptr;
@@ -159,25 +165,25 @@ void zenon::init()
     output_copy_command_queue_descriptor.priority = ZE_COMMAND_QUEUE_PRIORITY_NORMAL;
     output_copy_command_queue_descriptor.ordinal = copyOnlyQueueGroupOrdinal;
     output_copy_command_queue_descriptor.index = 0;
-    SUCCESS_OR_TERMINATE( zeCommandQueueCreate( context, device, &output_copy_command_queue_descriptor, &output_copy_command_queue ) );
+    SUCCESS_OR_TERMINATE(zeCommandQueueCreate(context, device, &output_copy_command_queue_descriptor, &output_copy_command_queue));
 }
 zenon::~zenon()
 {
     zenon_cntr--;
-    if(!disable_blitter)
-    SUCCESS_OR_TERMINATE( zeCommandListDestroy( input_copy_command_list ) );
+    if (!disable_blitter)
+        SUCCESS_OR_TERMINATE(zeCommandListDestroy(input_copy_command_list));
 
-    SUCCESS_OR_TERMINATE( zeCommandQueueDestroy( input_copy_command_queue ) );
+    SUCCESS_OR_TERMINATE(zeCommandQueueDestroy(input_copy_command_queue));
 
-    SUCCESS_OR_TERMINATE( zeCommandListDestroy( output_copy_command_list ) );
+    SUCCESS_OR_TERMINATE(zeCommandListDestroy(output_copy_command_list));
 
-    SUCCESS_OR_TERMINATE( zeCommandQueueDestroy( output_copy_command_queue ) );
+    SUCCESS_OR_TERMINATE(zeCommandQueueDestroy(output_copy_command_queue));
 
     SUCCESS_OR_TERMINATE(zeCommandListDestroy(command_list));
 
     SUCCESS_OR_TERMINATE(zeMemFree(context, output_buffer));
 
-    SUCCESS_OR_TERMINATE( zeMemFree( context, input1_buffer ) );
+    SUCCESS_OR_TERMINATE(zeMemFree(context, input1_buffer));
 
     SUCCESS_OR_TERMINATE(zeMemFree(context, input2_buffer));
 
@@ -190,11 +196,11 @@ zenon::~zenon()
         SUCCESS_OR_TERMINATE(zeEventDestroy(*kernel_ts_event));
         SUCCESS_OR_TERMINATE(zeEventPoolDestroy(event_pool));
 
-        for( uint32_t i = 0; i < command_queue_count; i++ )
+        for (uint32_t i = 0; i < command_queue_count; i++)
         {
-            SUCCESS_OR_TERMINATE( zeCommandQueueDestroy( command_queue ) );
-            SUCCESS_OR_TERMINATE( zeCommandQueueDestroy( input_copy_command_queue ) );
-            SUCCESS_OR_TERMINATE( zeCommandQueueDestroy( output_copy_command_queue ) );
+            SUCCESS_OR_TERMINATE(zeCommandQueueDestroy(command_queue));
+            SUCCESS_OR_TERMINATE(zeCommandQueueDestroy(input_copy_command_queue));
+            SUCCESS_OR_TERMINATE(zeCommandQueueDestroy(output_copy_command_queue));
         }
 
         SUCCESS_OR_TERMINATE(zeContextDestroy(context));
@@ -244,30 +250,30 @@ void zenon::allocate_buffers()
 {
     memory_descriptor.stype = ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC;
     memory_descriptor.ordinal = 0;
-    auto alloc_size = sizeof( uint8_t ) * input1->size();
+    auto alloc_size = sizeof(uint8_t) * input1->size();
 
-    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        alloc_size, 1, device, &input1_buffer ) );
+    SUCCESS_OR_TERMINATE(zeMemAllocDevice(context, &memory_descriptor,
+        alloc_size, 1, device, &input1_buffer));
 
-    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        alloc_size, 1, device, &input2_buffer ) );
+    SUCCESS_OR_TERMINATE(zeMemAllocDevice(context, &memory_descriptor,
+        alloc_size, 1, device, &input2_buffer));
 
-    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        alloc_size, 1, device, &im_buf1 ) );
+    SUCCESS_OR_TERMINATE(zeMemAllocDevice(context, &memory_descriptor,
+        alloc_size, 1, device, &im_buf1));
 
-    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        alloc_size, 1, device, &im_buf2 ) );
-    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
+    SUCCESS_OR_TERMINATE(zeMemAllocDevice(context, &memory_descriptor,
+        alloc_size, 1, device, &im_buf2));
+    SUCCESS_OR_TERMINATE(zeMemAllocDevice(context, &memory_descriptor,
         alloc_size, 1, device,
-        &im_buf3 ) );
-    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        alloc_size, 1, device, &im_buf4 ) );
+        &im_buf3));
+    SUCCESS_OR_TERMINATE(zeMemAllocDevice(context, &memory_descriptor,
+        alloc_size, 1, device, &im_buf4));
 
-    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        alloc_size, 1, device, &im_buf5 ) );
+    SUCCESS_OR_TERMINATE(zeMemAllocDevice(context, &memory_descriptor,
+        alloc_size, 1, device, &im_buf5));
 
-    SUCCESS_OR_TERMINATE( zeMemAllocDevice( context, &memory_descriptor,
-        alloc_size, 1, device, &im_buf6 ) );
+    SUCCESS_OR_TERMINATE(zeMemAllocDevice(context, &memory_descriptor,
+        alloc_size, 1, device, &im_buf6));
 
     if (disable_blitter) {
         hostDesc.flags = ZE_HOST_MEM_ALLOC_FLAG_BIAS_UNCACHED;
@@ -289,7 +295,7 @@ void zenon::submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel,
     int param_cnt = 0;
     for (int i = 0; i < input.size(); i++)
     {
-        SUCCESS_OR_TERMINATE( zeKernelSetArgumentValue( _kernel, param_cnt++, sizeof( input1_buffer ), &input.at( i ) ));
+        SUCCESS_OR_TERMINATE(zeKernelSetArgumentValue(_kernel, param_cnt++, sizeof(input1_buffer), &input.at(i)));
     }
     SUCCESS_OR_TERMINATE(zeKernelSetArgumentValue(_kernel, param_cnt++, sizeof(output_buffer), &output));
     SUCCESS_OR_TERMINATE(zeCommandListAppendLaunchKernel(command_list, _kernel, &group_count,
@@ -317,15 +323,15 @@ void zenon::submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel,
     int counter = 0;
 
     if (_kernel == cmp_bound_kernel) {
-        counter = (int)(time_in_nanoseconds * 0.0114416 - 37.4022);
+        counter = (int)(time_in_nanoseconds * compute_bound_kernel_multiplier * 0.0114416 - 37.4022);
     }
     else if (_kernel == mem_bound_kernel) {
-            counter = (int)(time_in_nanoseconds * 0.01133048 - 256.87);
-        } 
+        counter = (int)(memory_used_by_mem_bound_kernel);
+    }
     else if (_kernel == set_n_to_output) {
         counter = time_in_nanoseconds;
     }
-    
+
     for (int i = 0; i < input.size(); i++)
     {
         SUCCESS_OR_TERMINATE(zeKernelSetArgumentValue(_kernel, param_cnt++, sizeof(input1_buffer), &input.at(i)));
@@ -390,7 +396,7 @@ void zenon::create_cmd_list()
     uint32_t group_size_x = 0;
     uint32_t group_size_y = 0;
     uint32_t group_size_z = 0;
-    SUCCESS_OR_TERMINATE(zeKernelSuggestGroupSize(kernel, input1->size(), 1U, 1U, &group_size_x, &group_size_y, &group_size_z));
+    SUCCESS_OR_TERMINATE(zeKernelSuggestGroupSize(kernel, number_of_threads, 1U, 1U, &group_size_x, &group_size_y, &group_size_z));
     SUCCESS_OR_TERMINATE(zeKernelSetGroupSize(kernel, group_size_x, group_size_y, group_size_z));
 
     command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
@@ -426,7 +432,7 @@ void zenon::create_cmd_list()
             if (i % 3 == 2)
                 submit_kernel_to_cmd_list(add_buffers_kernel, { im_buf1, im_buf3 }, im_buf2, kernel_ts_event[i + 2], { &kernel_ts_event[i] , &kernel_ts_event[i + 1] }, 2);
         }
-        
+
         submit_kernel_to_cmd_list(kernel, { im_buf3 }, output_buffer, kernel_ts_event[number_of_kernels + 2], { &kernel_ts_event[number_of_kernels], &kernel_ts_event[number_of_kernels + 1] }, 2);
         global_kernel_ts_event.push_back(kernel_ts_event[number_of_kernels + 2]);
         SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
@@ -447,76 +453,76 @@ void zenon::create_cmd_list()
             submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0, 1);
             submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { nullptr }, 0, 2);
         }
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0, 187717);                                           //conv1
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { &kernel_ts_event[0] }, 1, 145798);                               //pool1
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[2], { &kernel_ts_event[1] }, 1, 201456);                               //<-res2a_branch1
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[3], { &kernel_ts_event[1] }, 1, 67940);                                //->res2a_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[4], { &kernel_ts_event[3] }, 1, 56114);                                //->res2a_branch2b
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[5], { &kernel_ts_event[4] }, 1, 356590);                               //->res2a_branch2c
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[6], { &kernel_ts_event[2], &kernel_ts_event[5] }, 2, 200166);          //->res2b_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[7], { &kernel_ts_event[6] }, 1, 56114);                                //->res2b_branch2b
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[8], { &kernel_ts_event[7] }, 1, 356590);                               //->res2b_branch2c
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[9], { &kernel_ts_event[8] }, 1, 200166);                               //->res2c_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[10], { &kernel_ts_event[9] }, 1, 56114);                               //->res2c_branch2b
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[11], { &kernel_ts_event[10] }, 1, 356590);                             //->res2c_branch2c
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[12], { &kernel_ts_event[11] }, 1, 183438);                             //<-res3a_branch1
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[13], { &kernel_ts_event[11] }, 1, 56519);                              //->res3a_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[14], { &kernel_ts_event[13] }, 1, 55891);                              //->res3a_branch2b
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[15], { &kernel_ts_event[14] }, 1, 149931);                             //->res3a_branch2c
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[16], { &kernel_ts_event[12], &kernel_ts_event[15] }, 1, 71228);        //->res3b_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[17], { &kernel_ts_event[16] }, 1, 55891);                              //->res3b_branch2b
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[18], { &kernel_ts_event[17] }, 1, 138323);                             //->res3b_branch2c
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[19], { &kernel_ts_event[18] }, 1, 71228);                              //->res3c_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[20], { &kernel_ts_event[19] }, 1, 55891);                              //->res3c_branch2b
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[21], { &kernel_ts_event[20] }, 1, 138323);                             //->res3c_branch2c
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[22], { &kernel_ts_event[21] }, 1, 71228);                              //->res3c_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[23], { &kernel_ts_event[22] }, 1, 55891);                              //->res3c_branch2b
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[24], { &kernel_ts_event[23] }, 1, 138323);                             //->res3c_branch2c
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[25], { &kernel_ts_event[24] }, 1, 84758);                              //<-res4a_branch1
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[26], { &kernel_ts_event[24] }, 1, 27988);                              //<-res4a_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[27], { &kernel_ts_event[26] }, 1, 55420);                              //<-res4a_branch2b
-            submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[28], { &kernel_ts_event[27] }, 1, 60486);                              //<-res4a_branch2c
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[29], { &kernel_ts_event[25], &kernel_ts_event[28] }, 2, 26866);        //->res4b_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[30], { &kernel_ts_event[29] }, 1, 55420);                              //<-res4b_branch2b
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[31], { &kernel_ts_event[30] }, 1, 27559);                              //<-res4b_branch2c
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[32], { &kernel_ts_event[31] }, 1, 26866);                              //<-res4c_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[33], { &kernel_ts_event[32] }, 1, 55420);                              //<-res4c_branch2b
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[34], { &kernel_ts_event[33] }, 1, 27559);                              //<-res4c_branch2c
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[35], { &kernel_ts_event[34] }, 1, 26866);                              //<-res4d_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[36], { &kernel_ts_event[35] }, 1, 55420);                              //<-res4d_branch2b
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[37], { &kernel_ts_event[36] }, 1, 27559);                              //<-res4d_branch2c
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[38], { &kernel_ts_event[37] }, 1, 26866);                              //<-res4e_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[39], { &kernel_ts_event[38] }, 1, 55420);                              //<-res4e_branch2b
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[40], { &kernel_ts_event[39] }, 1, 27559);                              //<-res4e_branch2c
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[41], { &kernel_ts_event[40] }, 1, 26866);                              //<-res4f_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[42], { &kernel_ts_event[41] }, 1, 55420);                              //<-res4f_branch2b
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[43], { &kernel_ts_event[42] }, 1, 27559);                              //<-res4f_branch2c
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[44], { &kernel_ts_event[43] }, 1, 50121);                              //<-res5a_branch1
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[45], { &kernel_ts_event[43] }, 1, 16507);                              //<-res5a_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[46], { &kernel_ts_event[45] }, 1, 55398);                              //<-res5a_branch2b
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[47], { &kernel_ts_event[46] }, 1, 27278);                              //<-res5a_branch2c
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[48], { &kernel_ts_event[44], &kernel_ts_event[47] }, 2, 29580);        //<-res5b_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[49], { &kernel_ts_event[48] }, 1, 55398);                              //<-res5b_branch2b
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[50], { &kernel_ts_event[49] }, 1, 27278);                              //<-res5b_branch2c
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[51], { &kernel_ts_event[50]}, 1, 29580);                               //<-res5c_branch2a
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[52], { &kernel_ts_event[51] }, 1, 55398);                              //<-res5c_branch2b
-            submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, output_buffer, kernel_ts_event[53], { &kernel_ts_event[52] }, 1, 27278);                         //<-res5c_branch2c
-            global_kernel_ts_event.push_back(kernel_ts_event[53]);
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0, 187717);                                           //conv1
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { &kernel_ts_event[0] }, 1, 145798);                               //pool1
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[2], { &kernel_ts_event[1] }, 1, 201456);                               //<-res2a_branch1
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[3], { &kernel_ts_event[1] }, 1, 67940);                                //->res2a_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[4], { &kernel_ts_event[3] }, 1, 56114);                                //->res2a_branch2b
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[5], { &kernel_ts_event[4] }, 1, 356590);                               //->res2a_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[6], { &kernel_ts_event[2], &kernel_ts_event[5] }, 2, 200166);          //->res2b_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[7], { &kernel_ts_event[6] }, 1, 56114);                                //->res2b_branch2b
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[8], { &kernel_ts_event[7] }, 1, 356590);                               //->res2b_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[9], { &kernel_ts_event[8] }, 1, 200166);                               //->res2c_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[10], { &kernel_ts_event[9] }, 1, 56114);                               //->res2c_branch2b
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[11], { &kernel_ts_event[10] }, 1, 356590);                             //->res2c_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[12], { &kernel_ts_event[11] }, 1, 183438);                             //<-res3a_branch1
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[13], { &kernel_ts_event[11] }, 1, 56519);                              //->res3a_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[14], { &kernel_ts_event[13] }, 1, 55891);                              //->res3a_branch2b
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[15], { &kernel_ts_event[14] }, 1, 149931);                             //->res3a_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[16], { &kernel_ts_event[12], &kernel_ts_event[15] }, 1, 71228);        //->res3b_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[17], { &kernel_ts_event[16] }, 1, 55891);                              //->res3b_branch2b
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[18], { &kernel_ts_event[17] }, 1, 138323);                             //->res3b_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[19], { &kernel_ts_event[18] }, 1, 71228);                              //->res3c_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[20], { &kernel_ts_event[19] }, 1, 55891);                              //->res3c_branch2b
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[21], { &kernel_ts_event[20] }, 1, 138323);                             //->res3c_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[22], { &kernel_ts_event[21] }, 1, 71228);                              //->res3c_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[23], { &kernel_ts_event[22] }, 1, 55891);                              //->res3c_branch2b
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[24], { &kernel_ts_event[23] }, 1, 138323);                             //->res3c_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[25], { &kernel_ts_event[24] }, 1, 84758);                              //<-res4a_branch1
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[26], { &kernel_ts_event[24] }, 1, 27988);                              //<-res4a_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[27], { &kernel_ts_event[26] }, 1, 55420);                              //<-res4a_branch2b
+        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[28], { &kernel_ts_event[27] }, 1, 60486);                              //<-res4a_branch2c
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[29], { &kernel_ts_event[25], &kernel_ts_event[28] }, 2, 26866);        //->res4b_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[30], { &kernel_ts_event[29] }, 1, 55420);                              //<-res4b_branch2b
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[31], { &kernel_ts_event[30] }, 1, 27559);                              //<-res4b_branch2c
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[32], { &kernel_ts_event[31] }, 1, 26866);                              //<-res4c_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[33], { &kernel_ts_event[32] }, 1, 55420);                              //<-res4c_branch2b
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[34], { &kernel_ts_event[33] }, 1, 27559);                              //<-res4c_branch2c
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[35], { &kernel_ts_event[34] }, 1, 26866);                              //<-res4d_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[36], { &kernel_ts_event[35] }, 1, 55420);                              //<-res4d_branch2b
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[37], { &kernel_ts_event[36] }, 1, 27559);                              //<-res4d_branch2c
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[38], { &kernel_ts_event[37] }, 1, 26866);                              //<-res4e_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[39], { &kernel_ts_event[38] }, 1, 55420);                              //<-res4e_branch2b
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[40], { &kernel_ts_event[39] }, 1, 27559);                              //<-res4e_branch2c
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[41], { &kernel_ts_event[40] }, 1, 26866);                              //<-res4f_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[42], { &kernel_ts_event[41] }, 1, 55420);                              //<-res4f_branch2b
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[43], { &kernel_ts_event[42] }, 1, 27559);                              //<-res4f_branch2c
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[44], { &kernel_ts_event[43] }, 1, 50121);                              //<-res5a_branch1
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[45], { &kernel_ts_event[43] }, 1, 16507);                              //<-res5a_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[46], { &kernel_ts_event[45] }, 1, 55398);                              //<-res5a_branch2b
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[47], { &kernel_ts_event[46] }, 1, 27278);                              //<-res5a_branch2c
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[48], { &kernel_ts_event[44], &kernel_ts_event[47] }, 2, 29580);        //<-res5b_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[49], { &kernel_ts_event[48] }, 1, 55398);                              //<-res5b_branch2b
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[50], { &kernel_ts_event[49] }, 1, 27278);                              //<-res5b_branch2c
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[51], { &kernel_ts_event[50] }, 1, 29580);                               //<-res5c_branch2a
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[52], { &kernel_ts_event[51] }, 1, 55398);                              //<-res5c_branch2b
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, output_buffer, kernel_ts_event[53], { &kernel_ts_event[52] }, 1, 27278);                         //<-res5c_branch2c
+        global_kernel_ts_event.push_back(kernel_ts_event[53]);
 
-            SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
-            if (!disable_blitter) {
-                //Output copy engine
-                output_copy_command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
-                output_copy_command_list_descriptor.pNext = nullptr;
-                output_copy_command_list_descriptor.flags = 0;
-                output_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
+        SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
+        if (!disable_blitter) {
+            //Output copy engine
+            output_copy_command_list_descriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
+            output_copy_command_list_descriptor.pNext = nullptr;
+            output_copy_command_list_descriptor.flags = 0;
+            output_copy_command_list_descriptor.commandQueueGroupOrdinal = copyOnlyQueueGroupOrdinal;
 
-                SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &output_copy_command_list_descriptor, &output_copy_command_list));
-                SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output->data(), im_buf4, allocSize, nullptr, 1, &kernel_ts_event[53]));
-                SUCCESS_OR_TERMINATE(zeCommandListClose(output_copy_command_list));
-            }
+            SUCCESS_OR_TERMINATE(zeCommandListCreate(context, device, &output_copy_command_list_descriptor, &output_copy_command_list));
+            SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(output_copy_command_list, output->data(), im_buf4, allocSize, nullptr, 1, &kernel_ts_event[53]));
+            SUCCESS_OR_TERMINATE(zeCommandListClose(output_copy_command_list));
+        }
     }
-    
+
 }
 
 gpu_results zenon::run(uint32_t clinet_id)
@@ -525,14 +531,14 @@ gpu_results zenon::run(uint32_t clinet_id)
         SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(input_copy_command_queue, 1, &input_copy_command_list, nullptr));
         SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(input_copy_command_queue, UINT64_MAX));
     }
-    SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( command_queue, 1, &command_list, nullptr ) );
-    SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( command_queue, UINT64_MAX ) );
+    SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(command_queue, 1, &command_list, nullptr));
+    SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(command_queue, UINT64_MAX));
     //SUCCESS_OR_TERMINATE(zeEventHostSynchronize(global_kernel_ts_event.at(clinet_id), UINT32_MAX));
     if (!disable_blitter) {
         SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(output_copy_command_queue, 1, &output_copy_command_list, nullptr));
         SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(output_copy_command_queue, UINT64_MAX));
     }
-    if( profiling )
+    if (profiling)
     {
         ze_device_properties_t devProperties = { ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES };
         SUCCESS_OR_TERMINATE(zeDeviceGetProperties(device, &devProperties));
@@ -541,7 +547,7 @@ gpu_results zenon::run(uint32_t clinet_id)
         gpu_result.execuction_time = 0;
         uint64_t timerResolution = devProperties.timerResolution;
         uint64_t kernelDuration = 0;
-        for( int i = 0; i < graph_event_count; i++ )
+        for (int i = 0; i < graph_event_count; i++)
         {
             SUCCESS_OR_TERMINATE(zeEventQueryKernelTimestamp(kernel_ts_event[i], &kernel_ts_results[i]));
             kernelDuration = (kernel_ts_results[i].context.kernelEnd - kernel_ts_results[i].context.kernelStart) * timerResolution;
@@ -554,9 +560,9 @@ gpu_results zenon::run(uint32_t clinet_id)
         gpu_result.gpu_time = (kernel_ts_results[graph_event_count - 2].context.kernelEnd - kernel_ts_results[0].context.kernelStart) * timerResolution;
     }
 
-    for( int i = 0; i < 54; i++ )
+    for (int i = 0; i < 54; i++)
     {
-        zeEventHostReset( kernel_ts_event[ i ] );
+        zeEventHostReset(kernel_ts_event[i]);
     }
 
     if (log) {
