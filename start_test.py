@@ -16,7 +16,6 @@ for t in test_matrix[0]:
                 for q in test_matrix[4]:
                     for qps in test_matrix[5]:
                         run_test(str(t), str(mem), str(cbk_mul), str(s), str(q), str(qps))
-                        print(str(t) + str(mem) + str(cbk_mul) + str(s) + str(q) + str(qps) + "\n")
                 
 
 
