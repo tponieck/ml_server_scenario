@@ -11,7 +11,7 @@ def run_test(t, mem, cbk_mul, s , q, qps):
 def fill_header():
     f = open('./result.csv', 'a', newline='')
     writer = csv.writer(f)
-    header = ['threads','memory used by mem_bound_kernel','multiplier of duraton compute_bound_kernel','consumers','queries','queries per second']
+    header = ['threads','memory used by mem_bound_kernel','multiplier of duraton compute_bound_kernel','consumers','queries','queries per second','result [ms]']
     writer.writerow(header)
     f.close()
 
