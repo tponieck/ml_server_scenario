@@ -25,10 +25,10 @@ queries_pers_second = [2000, 4000]
 fill_header()
 for t in threads:
     for mem in memory:
-        for cbk_mul in compute_bound_kernel_multiplier
+        for cbk_mul in compute_bound_kernel_multiplier:
             for s in consumers:
-                for qps in queries_pers_second
-                    result = run_test(str(t), str(mem), str(cbk_mul), str(s), str(q), str(qps))
+                for qps in queries_pers_second:
+                    result = run_test(str(t), str(mem), str(cbk_mul), str(s), str(queries), str(qps))
                     data = [t, mem, cbk_mul, s, queries, qps, result]
                     f = open('./result.csv', 'a', newline='')
                     writer = csv.writer(f)
