@@ -39,7 +39,7 @@ public:
         }
     }
 
-    gpu_results query_sample(int id)
+    zenon* query_sample(int id)
     {
         zenon* zenek = get_zenon_atomic();
         int zen_id = zenek->get_id();
@@ -47,13 +47,25 @@ public:
         std::vector<uint8_t>* in2 = zenek->get_input2();
         std::fill(in1->begin(), in1->end(), id);
         std::fill(in2->begin(), in2->end(), id - 1);
-        gpu_results gpu_result = zenek->run(id);
+        //gpu_results gpu_result = zenek->run(id);
+        zenek->run( id );
         int ccs_id = zenek->get_ccs_id();
-        return_zenon_atomic(zenek);
+        //return_zenon_atomic(zenek);
         log("sample id:", id);
         log("will use zenek no:", zen_id);
         log("with ccs: ", ccs_id);
-        return gpu_result;
+        return zenek;
+    }
+
+    bool is_finished( int id, zenon* zenek )
+    {
+        return zenek->is_finished( id );
+    }
+
+    gpu_results get_result( int id, zenon* zenek )
+    {
+        return_zenon_atomic( zenek );
+        return zenek->get_result(id);
     }
 
     void delete_zenek()
