@@ -124,7 +124,7 @@ public:
         }
 
         high_resolution_clock::time_point overall_end_time = high_resolution_clock::now();
-        std::chrono::duration<double, std::micro> overall = overall_end_time - overall_start_time;
+        std::chrono::duration<double, std::milli> overall = overall_end_time - overall_start_time;
         std::cout << "Overall duration: " << overall.count() << std::endl;
 
         print_results();
