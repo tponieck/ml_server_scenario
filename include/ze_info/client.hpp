@@ -222,7 +222,7 @@ public:
         double avg_v = avg(results);
         if (profiling)
             print_profiling();
-        //std::cout << "CPU:                Min: " << min << " us \t Max: " << max << " us \t Avg: " << avg_v << " us \n";
+        std::cout << "CPU:                Min: " << min << " us \t Max: " << max << " us \t Avg: " << avg_v << " us \n";
     }
 };
 
