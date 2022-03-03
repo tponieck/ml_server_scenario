@@ -39,6 +39,23 @@ public:
         }
     }
 
+    gpu_results query_sample_multiple_threads( int id )
+    {
+        zenon* zenek = get_zenon_atomic();
+        int zen_id = zenek->get_id();
+        std::vector<uint8_t>* in1 = zenek->get_input1();
+        std::vector<uint8_t>* in2 = zenek->get_input2();
+        std::fill( in1->begin(), in1->end(), id );
+        std::fill( in2->begin(), in2->end(), id - 1 );
+        gpu_results gpu_result = zenek->run( id );
+        int ccs_id = zenek->get_ccs_id();
+        return_zenon_atomic( zenek );
+        log( "sample id:", id );
+        log( "will use zenek no:", zen_id );
+        log( "with ccs: ", ccs_id );
+        return gpu_result;
+    }
+
     zenon* query_sample(int id)
     {
         zenon* zenek = get_zenon_atomic();

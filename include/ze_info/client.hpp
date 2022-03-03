@@ -21,7 +21,7 @@
 #include  "ze_info/server.hpp"
 
 using namespace std::chrono;
-extern bool profiling;
+extern bool profiling, single_thread;
 
 class client
 {
@@ -109,53 +109,48 @@ public:
             print_dist();
 
         // Warmup
-        //if (warm_up)
-         //   run_single(0);
+        if( warm_up )
+            run_single( 0 );
 
         high_resolution_clock::time_point overall_start_time = high_resolution_clock::now();
-        int q = 0;
-        //std::thread** thread_pool = new std::thread * [queries];
-        for (int i = 0; q < pool_size; q++)
-        {
-            //thread_pool[i] = new std::thread(&client::run_single, this, i);
-            //std::this_thread::sleep_for(dist[i]);
-            //run_single( i );
-            zenonki[q] = serv.query_sample( q );
-        }
-        /*
-        int i = 0, finish_count=0;
-        while (finish_count < queries)
-        { 
-            if( serv.is_finished( i % pool_size, zenonki[ i % pool_size] ) )
-            {
-                serv.get_result( i % pool_size, zenonki[ i % pool_size] );
-                finish_count++;
-                if (i+pool_size < queries  )
-                    zenonki[ i % pool_size ] = serv.query_sample( i + pool_size );
-            }
-            i++;
-            if( i == queries )
-                i = 0;
-            //thread_pool[i]->join();
-            //delete thread_pool[i];
-        }
-        */
 
-        int cntr = 0, finish_count = 0;
-        while( 1 )
+        if( !single_thread )
         {
-            if( serv.is_finished( cntr, zenonki[ cntr ] ) )
+            std::thread** thread_pool = new std::thread * [ queries ];
+            for( int i = 0; i < queries; i++ )
             {
-                serv.get_result( cntr, zenonki[ cntr ] );
-                std::cout << "finished " << finish_count << std::endl;
-                finish_count++;
-                if( q < queries )
-                    zenonki[ cntr ] = serv.query_sample( q++ );
+                thread_pool[ i ] = new std::thread( &client::run_single, this, i );
+                std::this_thread::sleep_for( dist[ i ] );
             }
-            if( finish_count == queries )
-                break;
-            cntr++;
-            cntr = cntr % pool_size;
+            for( int i = 0; i < queries; i++ )
+            {
+                thread_pool[ i ]->join();
+                delete thread_pool[ i ];
+            }
+        }
+        else
+        {
+            int q = 0;
+            for( int i = 0; q < pool_size; q++ )
+            {
+                zenonki[ q ] = serv.query_sample( q );
+            }
+
+            int cntr = 0, finish_count = 0;
+            while( 1 )
+            {
+                if( serv.is_finished( cntr, zenonki[ cntr ] ) )
+                {
+                    serv.get_result( cntr, zenonki[ cntr ] );
+                    finish_count++;
+                    if( q < queries )
+                        zenonki[ cntr ] = serv.query_sample( q++ );
+                }
+                if( finish_count == queries )
+                    break;
+                cntr++;
+                cntr = cntr % pool_size;
+            }
         }
 
         high_resolution_clock::time_point overall_end_time = high_resolution_clock::now();
@@ -165,13 +160,13 @@ public:
         print_results();
         serv.delete_zenek();
     }
-    /*
+    
     void run_single(int qid)
     {
         high_resolution_clock::time_point start_time = high_resolution_clock::now();
         try
         {
-            gpu_results_vec[qid] = serv.query_sample(qid);
+            gpu_results_vec[qid] = serv.query_sample_multiple_threads(qid);
         }
         catch (std::exception ex)
         {    
@@ -184,7 +179,7 @@ public:
 
         results[qid] = ms.count();
     }
-    */
+    
     void print_dist()
     {
         for (int n = 0; n < queries; ++n)

@@ -35,6 +35,7 @@ void check_caps()
 
 extern bool verbose;
 extern bool profiling;
+extern bool single_thread;
 extern bool resnet;
 extern bool disable_blitter;
 extern float compute_bound_kernel_multiplier;
@@ -59,6 +60,7 @@ void print_help()
     std::cout << "--cbk_mul         - set multiplier of duration cmp_bound_kernel" << std::endl;
     std::cout << "--t               - number of threads" << std::endl;
     std::cout << "--mem             - memory used by memory bound kernel in kB" << std::endl;
+    std::cout << "--single_thread   - memory used by memory bound kernel in kB" << std::endl;
 }
 
 int main(int argc, const char** argv) {
@@ -74,6 +76,7 @@ int main(int argc, const char** argv) {
     bool multi_ccs = true;
     bool fixed_dist = false;
     bool warm_up = true;
+    single_thread = false;
     profiling = false;
     verbose = false;
     resnet = false;
@@ -91,6 +94,10 @@ int main(int argc, const char** argv) {
         else if (!strcmp(argv[i], "--single_ccs"))
         {
             multi_ccs = false;
+        }
+        else if( !strcmp( argv[ i ], "--single_thread" ) )
+        {
+            single_thread = true;
         }
         else if (!strcmp(argv[i], "--q"))
         {
