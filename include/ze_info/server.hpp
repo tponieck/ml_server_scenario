@@ -81,8 +81,9 @@ public:
 
     gpu_results get_result( int id, zenon* zenek )
     {
+        gpu_results res = zenek->get_result( id );
         return_zenon_atomic( zenek );
-        return zenek->get_result(id);
+        return res;
     }
 
     void delete_zenek()

@@ -537,7 +537,7 @@ gpu_results zenon::run(uint32_t clinet_id)
     if( !single_thread )
         SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(command_queue, UINT64_MAX));
     //SUCCESS_OR_TERMINATE(zeEventHostSynchronize(global_kernel_ts_event.at(clinet_id), UINT32_MAX));
-    if (!disable_blitter) {
+    if (!disable_blitter && !single_thread) {
         SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(output_copy_command_queue, 1, &output_copy_command_list, nullptr));
         SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(output_copy_command_queue, UINT64_MAX));
     }
@@ -602,6 +602,12 @@ bool zenon::is_finished( uint32_t clinet_id )
 
 gpu_results zenon::get_result( uint32_t clinet_id )
 {    
+    SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( command_queue, UINT64_MAX ) );
+    if( !disable_blitter )
+    {
+        SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( output_copy_command_queue, 1, &output_copy_command_list, nullptr ) );
+        SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( output_copy_command_queue, UINT64_MAX ) );
+    }
     if( log )
     {
         std::cout << "Output:\n";
