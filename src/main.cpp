@@ -37,6 +37,7 @@ extern bool verbose;
 extern bool profiling;
 extern bool resnet;
 extern bool disable_blitter;
+extern float mul;
 
 void print_help()
 {
@@ -53,6 +54,8 @@ void print_help()
     std::cout << "--profiling       - gpu kernel stats" << std::endl;
     std::cout << "--resnet          - run resnet 50 simulation" << std::endl;
     std::cout << "--disable_blitter - disable blitter" << std::endl;
+    std::cout << "--mul             - multiply resnet by x" << std::endl;
+
 }
 
 int main(int argc, const char **argv) {
@@ -64,6 +67,7 @@ int main(int argc, const char **argv) {
     int queries = 100;
     int qps = 20;
     int consumers_count = 8;
+    float mul = 1;
     bool logging = false;
     bool multi_ccs = true;
     bool fixed_dist = false;
@@ -97,6 +101,11 @@ int main(int argc, const char **argv) {
         {
             i++;
             consumers_count = atoi(argv[i]);
+        }
+        else if (!strcmp(argv[i], "--mul"))
+        {
+            i++;
+            mul = atoi(argv[i]);
         }
         else if (!strcmp(argv[i], "--log"))
         {
