@@ -131,9 +131,21 @@ public:
         else
         {
             int q = 0;
+            std::chrono::microseconds cumulative_dist = std::chrono::microseconds(0);
+            std::chrono::duration<double, std::micro> differ;
+            high_resolution_clock::time_point dist_start_time = high_resolution_clock::now();
+            high_resolution_clock::time_point current = high_resolution_clock::now();
             for( int i = 0; q < pool_size; q++ )
             {
                 zenonki[ q ] = serv.query_sample( q );
+                if( q + 1 < queries )
+                {
+                    cumulative_dist += dist[ q ];
+                    current = high_resolution_clock::now();
+                    differ = current - dist_start_time;
+                    std::chrono::duration<double, std::micro> diff = cumulative_dist - differ;
+                    std::this_thread::sleep_for( diff );
+                }
             }
 
             int cntr = 0, finish_count = 0;
@@ -144,7 +156,17 @@ public:
                     serv.get_result( cntr, zenonki[ cntr ] );
                     finish_count++;
                     if( q < queries )
+                    {
                         zenonki[ cntr ] = serv.query_sample( q++ );
+                        if( q < queries )
+                        {
+                            cumulative_dist += dist[ q ];
+                            current = high_resolution_clock::now();
+                            differ = current - dist_start_time;
+                            std::chrono::duration<double, std::micro> diff = cumulative_dist - differ;
+                            std::this_thread::sleep_for( diff );
+                        }
+                    }
                 }
                 if( finish_count == queries )
                     break;
