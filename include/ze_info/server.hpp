@@ -64,10 +64,8 @@ public:
         std::vector<uint8_t>* in2 = zenek->get_input2();
         std::fill(in1->begin(), in1->end(), id);
         std::fill(in2->begin(), in2->end(), id - 1);
-        //gpu_results gpu_result = zenek->run(id);
         zenek->run( id );
         int ccs_id = zenek->get_ccs_id();
-        //return_zenon_atomic(zenek);
         log("sample id:", id);
         log("will use zenek no:", zen_id);
         log("with ccs: ", ccs_id);
