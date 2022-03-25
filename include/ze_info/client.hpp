@@ -135,7 +135,7 @@ public:
             std::chrono::duration<double, std::micro> differ;
             high_resolution_clock::time_point dist_start_time = high_resolution_clock::now();
             high_resolution_clock::time_point current = high_resolution_clock::now();
-            for( int i = 0; q < pool_size; q++ )
+            for( ; q < pool_size; q++ )
             {
                 zenonki[ q ] = serv.query_sample( q );
                 if( q + 1 < queries )
