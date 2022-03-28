@@ -25,12 +25,13 @@
 #include "ze_info/zenon.hpp"
 #include "ze_info/ze_utils.hpp"
 
-extern bool verbose, profiling, resnet, disable_blitter;
+extern bool verbose, profiling, resnet, disable_blitte, single_thread;
 extern float compute_bound_kernel_multiplier;
 extern short number_of_threads;
 extern short memory_used_by_mem_bound_kernel;
 bool verbose = false;
 bool profiling = false;
+bool single_thread = false;
 bool resnet = false;
 bool disable_blitter = false;
 float compute_bound_kernel_multiplier = 1.0;
@@ -532,9 +533,11 @@ gpu_results zenon::run(uint32_t clinet_id)
         SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(input_copy_command_queue, UINT64_MAX));
     }
     SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(command_queue, 1, &command_list, nullptr));
-    SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(command_queue, UINT64_MAX));
+
+    if( !single_thread )
+        SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(command_queue, UINT64_MAX));
     //SUCCESS_OR_TERMINATE(zeEventHostSynchronize(global_kernel_ts_event.at(clinet_id), UINT32_MAX));
-    if (!disable_blitter) {
+    if (!disable_blitter && !single_thread) {
         SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(output_copy_command_queue, 1, &output_copy_command_list, nullptr));
         SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(output_copy_command_queue, UINT64_MAX));
     }
@@ -559,28 +562,76 @@ gpu_results zenon::run(uint32_t clinet_id)
         gpu_result.kernels_end_time = kernel_ts_results[graph_event_count - 2].context.kernelStart * timerResolution;
         gpu_result.gpu_time = (kernel_ts_results[graph_event_count - 2].context.kernelEnd - kernel_ts_results[0].context.kernelStart) * timerResolution;
     }
-
-    for (int i = 0; i < 54; i++)
+    if( !single_thread )
     {
-        zeEventHostReset(kernel_ts_event[i]);
-    }
+        for( int i = 0; i < 54; i++ )
+        {
+            zeEventHostReset( kernel_ts_event[ i ] );
+        }
 
-    if (log) {
+        if( log )
+        {
+            std::cout << "Output:\n";
+            if( disable_blitter )
+            {
+                auto castedSharedBuffer = reinterpret_cast<uint64_t*>( output_buffer );
+                uint8_t* a2 = (uint8_t*)( castedSharedBuffer );
+                for( int i = 0; i < 32; i++ )
+                {
+                    std::cout << (unsigned)a2[ i ] << " ";
+                }
+            }
+            else
+            {
+                for( auto var : *output )
+                {
+                    std::cout << (int)var << " ";
+                }
+            }
+            printf( "\n" );
+        }
+    }
+    return gpu_result;
+}
+
+bool zenon::is_finished( uint32_t clinet_id )
+{
+    auto result = zeEventQueryStatus( global_kernel_ts_event.at( clinet_id ) );
+    return  result==ZE_RESULT_SUCCESS;
+}
+
+gpu_results zenon::get_result( uint32_t clinet_id )
+{    
+    SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( command_queue, UINT64_MAX ) );
+    if( !disable_blitter )
+    {
+        SUCCESS_OR_TERMINATE( zeCommandQueueExecuteCommandLists( output_copy_command_queue, 1, &output_copy_command_list, nullptr ) );
+        SUCCESS_OR_TERMINATE( zeCommandQueueSynchronize( output_copy_command_queue, UINT64_MAX ) );
+    }
+    if( log )
+    {
         std::cout << "Output:\n";
-        if (disable_blitter) {
-            auto castedSharedBuffer = reinterpret_cast<uint64_t*>(output_buffer);
-            uint8_t* a2 = (uint8_t*)(castedSharedBuffer);
-            for (int i = 0; i < 32; i++) {
-                std::cout << (unsigned)a2[i] << " ";
+        if( disable_blitter )
+        {
+            auto castedSharedBuffer = reinterpret_cast<uint64_t*>( output_buffer );
+            uint8_t* a2 = (uint8_t*)( castedSharedBuffer );
+            for( int i = 0; i < 32; i++ )
+            {
+                std::cout << (unsigned)a2[ i ] << " ";
             }
         }
-        else {
-            for (auto var : *output)
+        else
+        {
+            for( auto var : *output )
             {
                 std::cout << (int)var << " ";
             }
         }
-        printf("\n");
+        printf( "\n" );
+    }
+    for( int i = 0; i < 54; i++ )
+    {
+        zeEventHostReset( kernel_ts_event[ i ] );
     }
     return gpu_result;
 }

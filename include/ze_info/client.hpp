@@ -21,12 +21,12 @@
 #include  "ze_info/server.hpp"
 
 using namespace std::chrono;
-extern bool profiling;
+extern bool profiling, single_thread;
 
 class client
 {
 private:
-    int queries, qps;
+    int queries, qps, pool_size;
     std::vector<std::chrono::microseconds> dist;
     std::vector<double> results;
     std::vector<double> gpu_time;
@@ -37,6 +37,8 @@ private:
     server serv;
     std::vector<gpu_results> gpu_results_vec;
     std::vector<uint64_t> total_gpu_time;
+    std::vector <ze_event_handle_t> query_events;
+    std::vector <zenon*> zenonki;
 
     void create_distribution()
     {
@@ -92,8 +94,10 @@ public:
         qps = _qps;
         dist.resize(queries);
         results.resize(queries);
+        zenonki.resize( queries );
         warm_up = _warm_up;
         logging = log;
+        pool_size = zenon_pool_size;
         fixed_distribution = fixed_dist;
         gpu_results_vec.resize(queries);
         create_distribution();
@@ -105,38 +109,86 @@ public:
             print_dist();
 
         // Warmup
-        if (warm_up)
-            run_single(0);
+        if( warm_up )
+            run_single( 0 );
 
         high_resolution_clock::time_point overall_start_time = high_resolution_clock::now();
 
-        std::thread** thread_pool = new std::thread * [queries];
-        for (int i = 0; i < queries; i++)
+        if( !single_thread )
         {
-            thread_pool[i] = new std::thread(&client::run_single, this, i);
-            std::this_thread::sleep_for(dist[i]);
+            std::thread** thread_pool = new std::thread * [ queries ];
+            for( int i = 0; i < queries; i++ )
+            {
+                thread_pool[ i ] = new std::thread( &client::run_single, this, i );
+                std::this_thread::sleep_for( dist[ i ] );
+            }
+            for( int i = 0; i < queries; i++ )
+            {
+                thread_pool[ i ]->join();
+                delete thread_pool[ i ];
+            }
         }
-
-        for (int i = 0; i < queries; i++)
+        else
         {
-            thread_pool[i]->join();
-            delete thread_pool[i];
+            int q = 0;
+            std::chrono::microseconds cumulative_dist = std::chrono::microseconds(0);
+            std::chrono::duration<double, std::micro> differ;
+            high_resolution_clock::time_point dist_start_time = high_resolution_clock::now();
+            high_resolution_clock::time_point current = high_resolution_clock::now();
+            for( ; q < pool_size; q++ )
+            {
+                zenonki[ q ] = serv.query_sample( q );
+                if( q + 1 < queries )
+                {
+                    cumulative_dist += dist[ q ];
+                    current = high_resolution_clock::now();
+                    differ = current - dist_start_time;
+                    std::chrono::duration<double, std::micro> diff = cumulative_dist - differ;
+                    std::this_thread::sleep_for( diff );
+                }
+            }
+
+            int cntr = 0, finish_count = 0;
+            while( 1 )
+            {
+                if( serv.is_finished( cntr, zenonki[ cntr ] ) )
+                {
+                    serv.get_result( cntr, zenonki[ cntr ] );
+                    finish_count++;
+                    if( q < queries )
+                    {
+                        zenonki[ cntr ] = serv.query_sample( q++ );
+                        if( q < queries )
+                        {
+                            cumulative_dist += dist[ q ];
+                            current = high_resolution_clock::now();
+                            differ = current - dist_start_time;
+                            std::chrono::duration<double, std::micro> diff = cumulative_dist - differ;
+                            std::this_thread::sleep_for( diff );
+                        }
+                    }
+                }
+                if( finish_count == queries )
+                    break;
+                cntr++;
+                cntr = cntr % pool_size;
+            }
         }
 
         high_resolution_clock::time_point overall_end_time = high_resolution_clock::now();
         std::chrono::duration<double, std::milli> overall = overall_end_time - overall_start_time;
-        std::cout << "Overall duration: " << overall.count() << std::endl;
+        std::cout << "Overall duration: " << std::fixed << std::setprecision( 2 ) << overall.count() << std::endl;
 
         print_results();
         serv.delete_zenek();
     }
-
+    
     void run_single(int qid)
     {
         high_resolution_clock::time_point start_time = high_resolution_clock::now();
         try
         {
-            gpu_results_vec[qid] = serv.query_sample(qid);
+            gpu_results_vec[qid] = serv.query_sample_multiple_threads(qid);
         }
         catch (std::exception ex)
         {    
@@ -149,7 +201,7 @@ public:
 
         results[qid] = ms.count();
     }
-
+    
     void print_dist()
     {
         for (int n = 0; n < queries; ++n)
