@@ -41,6 +41,7 @@ extern bool disable_blitter;
 extern float compute_bound_kernel_multiplier;
 extern short number_of_threads;
 extern short memory_used_by_mem_bound_kernel;
+extern int input_size;
 
 void print_help()
 {
@@ -82,8 +83,9 @@ int main(int argc, const char** argv) {
     resnet = false;
     disable_blitter = false;
     compute_bound_kernel_multiplier = 1.0;
-    number_of_threads = 16;
+    number_of_threads = 32;
     memory_used_by_mem_bound_kernel = 4;
+    input_size = number_of_threads;
 
     for (int i = 1; i < argc; i++)
     {
@@ -152,12 +154,28 @@ int main(int argc, const char** argv) {
         {
             disable_blitter = true;
         }
-        else if (!strcmp(argv[i], "--t"))
+        else if( !strcmp( argv[ i ], "--t" ) )
         {
             i++;
-            number_of_threads = atoi(argv[i]);
-        }
+            number_of_threads = atoi( argv[ i ] );
+            if( number_of_threads > 4096 )
+            {
+                printf( "too high thread number, setting it to 4096\n" );
+                number_of_threads = 4096;
+            }
+            else if( number_of_threads < 2 )
+            {
+                printf( "too low thread number, setting it to 2\n" );
+                number_of_threads = 2;
+            }
 
+        }
+        else if( !strcmp( argv[ i ], "--input_size" ) )
+        {
+            i++;
+            input_size = atoi( argv[ i ] );
+            
+        }
         /*else if (!strcmp(argv[i], "--run_mt"))
         {
             run_mt( queries, qps, consumers_count, multi_ccs, fixed_dist, warm_up, logging );
@@ -169,6 +187,12 @@ int main(int argc, const char** argv) {
             return 1;
         }
     }
+    if( number_of_threads > input_size )
+    {
+        printf( "too high thread number, setting it to the same as input_size\n" );
+        number_of_threads = input_size;
+    }
+
 
     run_mt(queries, qps, consumers_count, multi_ccs, fixed_dist, warm_up, logging);
 

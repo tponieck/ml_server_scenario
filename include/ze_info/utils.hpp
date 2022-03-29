@@ -7,7 +7,6 @@
 
 #ifndef COMPUTE_SAMPLES_UTILS_HPP
 #define COMPUTE_SAMPLES_UTILS_HPP
-#define INPUT_SIZE 32
 
 #include <algorithm>
 #include <vector>
