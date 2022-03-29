@@ -62,6 +62,7 @@ void print_help()
     std::cout << "--t               - number of threads" << std::endl;
     std::cout << "--mem             - memory used by memory bound kernel in kB" << std::endl;
     std::cout << "--single_thread   - memory used by memory bound kernel in kB" << std::endl;
+    std::cout << "--input_size      - memory bound kernel input size" << std::endl;
 }
 
 int main(int argc, const char** argv) {
@@ -85,7 +86,7 @@ int main(int argc, const char** argv) {
     compute_bound_kernel_multiplier = 1.0;
     number_of_threads = 32;
     memory_used_by_mem_bound_kernel = 4;
-    input_size = number_of_threads;
+    input_size = 2048;
 
     for (int i = 1; i < argc; i++)
     {
@@ -125,6 +126,11 @@ int main(int argc, const char** argv) {
         {
             i++;
             consumers_count = atoi(argv[i]);
+        }
+        else if (!strcmp(argv[i], "--input size"))
+        {
+            i++;
+            input_size = atoi(argv[i]);
         }
         else if (!strcmp(argv[i], "--log"))
         {

@@ -38,7 +38,7 @@ bool disable_blitter = false;
 float compute_bound_kernel_multiplier = 1.0;
 short memory_used_by_mem_bound_kernel = 4;
 short number_of_threads = 32;
-int input_size = 4096;
+int input_size = 2048;
 
 
 std::vector <ze_event_handle_t> global_kernel_ts_event;
