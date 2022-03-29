@@ -45,8 +45,12 @@ public:
         int zen_id = zenek->get_id();
         std::vector<uint8_t>* in1 = zenek->get_input1();
         std::vector<uint8_t>* in2 = zenek->get_input2();
+        std::vector<uint8_t>* mem_in1 = zenek->get_mem_input1();
+        std::vector<uint8_t>* mem_in2 = zenek->get_mem_input2();
         std::fill( in1->begin(), in1->end(), id );
         std::fill( in2->begin(), in2->end(), id - 1 );
+        std::fill( mem_in1->begin(), mem_in1->end(), id );
+        std::fill( mem_in2->begin(), mem_in2->end(), id - 1 );
         gpu_results gpu_result = zenek->run( id );
         int ccs_id = zenek->get_ccs_id();
         return_zenon_atomic( zenek );
@@ -64,6 +68,10 @@ public:
         std::vector<uint8_t>* in2 = zenek->get_input2();
         std::fill(in1->begin(), in1->end(), id);
         std::fill(in2->begin(), in2->end(), id - 1);
+        std::vector<uint8_t>* mem_in1 = zenek->get_mem_input1();
+        std::vector<uint8_t>* mem_in2 = zenek->get_mem_input2();
+        std::fill(mem_in1->begin(), mem_in1->end(), id);
+        std::fill(mem_in2->begin(), mem_in2->end(), id - 1);
         zenek->run( id );
         int ccs_id = zenek->get_ccs_id();
         log("sample id:", id);

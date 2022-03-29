@@ -191,6 +191,12 @@ zenon::~zenon()
 
     SUCCESS_OR_TERMINATE(zeMemFree(context, input2_buffer));
 
+    SUCCESS_OR_TERMINATE(zeMemFree(context, mem_output_buffer));
+
+    SUCCESS_OR_TERMINATE(zeMemFree(context, mem_input1_buffer));
+
+    SUCCESS_OR_TERMINATE(zeMemFree(context, mem_input2_buffer));
+
     SUCCESS_OR_TERMINATE(zeKernelDestroy(kernel));
 
     SUCCESS_OR_TERMINATE(zeModuleDestroy(module));
@@ -264,6 +270,15 @@ void zenon::allocate_buffers()
 
     SUCCESS_OR_TERMINATE(zeMemAllocDevice(context, &memory_descriptor,
         alloc_size, 1, device, &im_buf1));
+
+    SUCCESS_OR_TERMINATE(zeMemAllocDevice(context, &memory_descriptor,
+        input_size * memory_used_by_mem_bound_kernel, 1, device, &mem_input1_buffer));
+
+    SUCCESS_OR_TERMINATE(zeMemAllocDevice(context, &memory_descriptor,
+        input_size * memory_used_by_mem_bound_kernel, 1, device, &mem_input2_buffer));
+
+    SUCCESS_OR_TERMINATE(zeMemAllocDevice(context, &memory_descriptor,
+        input_size * memory_used_by_mem_bound_kernel, 1, device, &mem_output_buffer));
 
     SUCCESS_OR_TERMINATE(zeMemAllocDevice(context, &memory_descriptor,
         alloc_size, 1, device, &im_buf2));
@@ -401,6 +416,10 @@ void zenon::create_cmd_list()
         SUCCESS_OR_TERMINATE(zeCommandListAppendBarrier(input_copy_command_list, nullptr, 0, nullptr));
         SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(input_copy_command_list, input2_buffer, input2->data(), allocSize, nullptr, 0, nullptr));
         SUCCESS_OR_TERMINATE(zeCommandListAppendBarrier(input_copy_command_list, nullptr, 0, nullptr));
+        SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(input_copy_command_list, mem_input1_buffer, input1->data(), input_size * memory_used_by_mem_bound_kernel, nullptr, 0, nullptr));
+        SUCCESS_OR_TERMINATE(zeCommandListAppendBarrier(input_copy_command_list, nullptr, 0, nullptr));
+        SUCCESS_OR_TERMINATE(zeCommandListAppendMemoryCopy(input_copy_command_list, mem_input2_buffer, input2->data(), input_size * memory_used_by_mem_bound_kernel, nullptr, 0, nullptr));
+        SUCCESS_OR_TERMINATE(zeCommandListAppendBarrier(input_copy_command_list, nullptr, 0, nullptr));
         SUCCESS_OR_TERMINATE(zeCommandListClose(input_copy_command_list));
     }
 
@@ -464,35 +483,35 @@ void zenon::create_cmd_list()
             submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0, 1,number_of_threads,input_size);
             submit_kernel_to_cmd_list(set_n_to_output, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { nullptr }, 0, 2,number_of_threads,input_size);
         }
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0, 187717,number_of_threads,input_size);                                           //conv1
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[1], { &kernel_ts_event[0] }, 1, 145798,number_of_threads,input_size);                               //pool1
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[2], { &kernel_ts_event[1] }, 1, 201456,number_of_threads,input_size);                               //<-res2a_branch1
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[3], { &kernel_ts_event[1] }, 1, 67940,number_of_threads,input_size);                                //->res2a_branch2a
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf1, kernel_ts_event[0], { nullptr }, 0, 187717,number_of_threads,input_size);                                           //conv1
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf2, kernel_ts_event[1], { &kernel_ts_event[0] }, 1, 145798,number_of_threads,input_size);                               //pool1
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf3, kernel_ts_event[2], { &kernel_ts_event[1] }, 1, 201456,number_of_threads,input_size);                               //<-res2a_branch1
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf4, kernel_ts_event[3], { &kernel_ts_event[1] }, 1, 67940,number_of_threads,input_size);                                //->res2a_branch2a
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[4], { &kernel_ts_event[3] }, 1, 56114,number_of_threads,input_size);                                //->res2a_branch2b
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[5], { &kernel_ts_event[4] }, 1, 356590,number_of_threads,input_size);                               //->res2a_branch2c
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[6], { &kernel_ts_event[2], &kernel_ts_event[5] }, 2, 200166,number_of_threads,input_size);          //->res2b_branch2a
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf6, kernel_ts_event[5], { &kernel_ts_event[4] }, 1, 356590,number_of_threads,input_size);                               //->res2a_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf1, kernel_ts_event[6], { &kernel_ts_event[2], &kernel_ts_event[5] }, 2, 200166,number_of_threads,input_size);          //->res2b_branch2a
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[7], { &kernel_ts_event[6] }, 1, 56114,number_of_threads,input_size);                                //->res2b_branch2b
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[8], { &kernel_ts_event[7] }, 1, 356590,number_of_threads,input_size);                               //->res2b_branch2c
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[9], { &kernel_ts_event[8] }, 1, 200166,number_of_threads,input_size);                               //->res2c_branch2a
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf3, kernel_ts_event[8], { &kernel_ts_event[7] }, 1, 356590,number_of_threads,input_size);                               //->res2b_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf4, kernel_ts_event[9], { &kernel_ts_event[8] }, 1, 200166,number_of_threads,input_size);                               //->res2c_branch2a
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[10], { &kernel_ts_event[9] }, 1, 56114,number_of_threads,input_size);                               //->res2c_branch2b
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[11], { &kernel_ts_event[10] }, 1, 356590,number_of_threads,input_size);                             //->res2c_branch2c
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[12], { &kernel_ts_event[11] }, 1, 183438,number_of_threads,input_size);                             //<-res3a_branch1
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[13], { &kernel_ts_event[11] }, 1, 56519,number_of_threads,input_size);                              //->res3a_branch2a
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf6, kernel_ts_event[11], { &kernel_ts_event[10] }, 1, 356590,number_of_threads,input_size);                             //->res2c_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf1, kernel_ts_event[12], { &kernel_ts_event[11] }, 1, 183438,number_of_threads,input_size);                             //<-res3a_branch1
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf2, kernel_ts_event[13], { &kernel_ts_event[11] }, 1, 56519,number_of_threads,input_size);                              //->res3a_branch2a
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[14], { &kernel_ts_event[13] }, 1, 55891,number_of_threads,input_size);                              //->res3a_branch2b
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[15], { &kernel_ts_event[14] }, 1, 149931,number_of_threads,input_size);                             //->res3a_branch2c
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[16], { &kernel_ts_event[12], &kernel_ts_event[15] }, 1, 71228,number_of_threads,input_size);        //->res3b_branch2a
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf4, kernel_ts_event[15], { &kernel_ts_event[14] }, 1, 149931,number_of_threads,input_size);                             //->res3a_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf5, kernel_ts_event[16], { &kernel_ts_event[12], &kernel_ts_event[15] }, 1, 71228,number_of_threads,input_size);        //->res3b_branch2a
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[17], { &kernel_ts_event[16] }, 1, 55891,number_of_threads,input_size);                              //->res3b_branch2b
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[18], { &kernel_ts_event[17] }, 1, 138323,number_of_threads,input_size);                             //->res3b_branch2c
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[19], { &kernel_ts_event[18] }, 1, 71228,number_of_threads,input_size);                              //->res3c_branch2a
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf1, kernel_ts_event[18], { &kernel_ts_event[17] }, 1, 138323,number_of_threads,input_size);                             //->res3b_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf2, kernel_ts_event[19], { &kernel_ts_event[18] }, 1, 71228,number_of_threads,input_size);                              //->res3c_branch2a
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[20], { &kernel_ts_event[19] }, 1, 55891,number_of_threads,input_size);                              //->res3c_branch2b
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[21], { &kernel_ts_event[20] }, 1, 138323,number_of_threads,input_size);                             //->res3c_branch2c
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[22], { &kernel_ts_event[21] }, 1, 71228,number_of_threads,input_size);                              //->res3c_branch2a
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf4, kernel_ts_event[21], { &kernel_ts_event[20] }, 1, 138323,number_of_threads,input_size);                             //->res3c_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf5, kernel_ts_event[22], { &kernel_ts_event[21] }, 1, 71228,number_of_threads,input_size);                              //->res3c_branch2a
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[23], { &kernel_ts_event[22] }, 1, 55891,number_of_threads,input_size);                              //->res3c_branch2b
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[24], { &kernel_ts_event[23] }, 1, 138323,number_of_threads,input_size);                             //->res3c_branch2c
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[25], { &kernel_ts_event[24] }, 1, 84758,number_of_threads,input_size);                              //<-res4a_branch1
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[26], { &kernel_ts_event[24] }, 1, 27988,number_of_threads,input_size);                              //<-res4a_branch2a
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf1, kernel_ts_event[24], { &kernel_ts_event[23] }, 1, 138323,number_of_threads,input_size);                             //->res3c_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf2, kernel_ts_event[25], { &kernel_ts_event[24] }, 1, 84758,number_of_threads,input_size);                              //<-res4a_branch1
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf3, kernel_ts_event[26], { &kernel_ts_event[24] }, 1, 27988,number_of_threads,input_size);                              //<-res4a_branch2a
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[27], { &kernel_ts_event[26] }, 1, 55420,number_of_threads,input_size);                              //<-res4a_branch2b
-        submit_kernel_to_cmd_list(mem_bound_kernel, { input1_buffer, input2_buffer }, im_buf5, kernel_ts_event[28], { &kernel_ts_event[27] }, 1, 60486,number_of_threads,input_size);                              //<-res4a_branch2c
+        submit_kernel_to_cmd_list(mem_bound_kernel, { mem_input1_buffer, mem_input2_buffer }, im_buf5, kernel_ts_event[28], { &kernel_ts_event[27] }, 1, 60486,number_of_threads,input_size);                              //<-res4a_branch2c
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf6, kernel_ts_event[29], { &kernel_ts_event[25], &kernel_ts_event[28] }, 2, 26866,number_of_threads,input_size);        //->res4b_branch2a
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf1, kernel_ts_event[30], { &kernel_ts_event[29] }, 1, 55420,number_of_threads,input_size);                              //<-res4b_branch2b
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf2, kernel_ts_event[31], { &kernel_ts_event[30] }, 1, 27559,number_of_threads,input_size);                              //<-res4b_branch2c
