@@ -36,7 +36,7 @@ bool single_thread = false;
 bool resnet = false;
 bool disable_blitter = false;
 float compute_bound_kernel_multiplier = 1.0;
-short memory_used_by_mem_bound_kernel = 4;
+short memory_used_by_mem_bound_kernel = 1;
 short number_of_threads = 32;
 int input_size = 4096;
 
@@ -50,6 +50,9 @@ zenon::zenon(bool _log, bool _multi_ccs)
     input1 = new std::vector<uint8_t>( input_size, 0);
     input2 = new std::vector<uint8_t>( input_size, 0);
     output = new std::vector<uint8_t>( input_size, 0);
+    input1 = new std::vector<uint8_t>(input_size * memory_used_by_mem_bound_kernel, 0);
+    input2 = new std::vector<uint8_t>(input_size * memory_used_by_mem_bound_kernel, 0);
+    output = new std::vector<uint8_t>(input_size * memory_used_by_mem_bound_kernel, 0);
     init();
 }
 
@@ -536,7 +539,7 @@ void zenon::create_cmd_list()
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf3, kernel_ts_event[50], { &kernel_ts_event[49] }, 1, 27278,number_of_threads,input_size);                              //<-res5b_branch2c
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[51], { &kernel_ts_event[50] }, 1, 29580,number_of_threads,input_size);                               //<-res5c_branch2a
         submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, im_buf4, kernel_ts_event[52], { &kernel_ts_event[51] }, 1, 55398,number_of_threads,input_size);                              //<-res5c_branch2b
-        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, output_buffer, kernel_ts_event[53], { &kernel_ts_event[52] }, 1, 27278,number_of_threads,input_size);                         //<-res5c_branch2c
+        submit_kernel_to_cmd_list(cmp_bound_kernel, { input1_buffer, input2_buffer }, mem_output_buffer, kernel_ts_event[53], { &kernel_ts_event[52] }, 1, 27278,number_of_threads,input_size);                         //<-res5c_branch2c
         global_kernel_ts_event.push_back(kernel_ts_event[53]);
 
         SUCCESS_OR_TERMINATE(zeCommandListClose(command_list));
