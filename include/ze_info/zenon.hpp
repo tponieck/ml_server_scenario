@@ -69,7 +69,7 @@ private:
     bool log;
     bool multi_ccs;
     void* input1_buffer = nullptr, * input2_buffer = nullptr, * mem_input1_buffer = nullptr, * mem_input2_buffer = nullptr, * im_buf1 = nullptr, * im_buf2 = nullptr, * im_buf3 = nullptr, * im_buf4 = nullptr, * im_buf5 = nullptr, * im_buf6 = nullptr;
-    void* output_buffer = nullptr, * mem_output_buffer = nullptr;
+    void* output_buffer = nullptr, * mem_output_buffer = nullptr, * mem_output_buffer2 = nullptr;
     ze_host_mem_alloc_desc_t hostDesc = { ZE_STRUCTURE_TYPE_HOST_MEM_ALLOC_DESC };
     
     std::vector<uint8_t>* input1;

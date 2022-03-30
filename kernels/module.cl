@@ -66,16 +66,17 @@ kernel void mem_bound_kernel(const global char *input, const global char *input2
     uint b = 0;
     const size_t id = get_group_id(0)*2 + get_sub_group_id();
     if(get_sub_group_local_id() == 0){
-        for (int j = 0; j < input_size/threads;j++){
-            for (int i = 0; i < counter; i++)
-            {
-                int in1 = input[id + j*threads + counter*input_size];
-                int in2 = input2[id + j*threads + counter*input_size];
+        for (int i = 0; i < counter; i++){
+             for (int j = 0; j < input_size/threads;j++){
+            
+                int in1 = input[id + j*threads + i*input_size];
+                int in2 = input2[id + j*threads + i*input_size];
                 a += in1;
                 b += in2;
+                
+                output[id + j*threads + i*input_size] = a + b;
             }
         
-            output[id + j*threads + counter*input_size] = a + b;
         }
     }
 }
