@@ -51,6 +51,9 @@ public:
     std::vector<uint8_t>* get_input1() { return input1; };
     std::vector<uint8_t>* get_input2() { return input2; };
     std::vector<uint8_t>* get_output() { return output; };
+    std::vector<uint8_t>* get_mem_input1() { return mem_input1; };
+    std::vector<uint8_t>* get_mem_input2() { return mem_input2; };
+    std::vector<uint8_t>* get_mem_output() { return mem_output; };
     void create_cmd_list();
     void submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t output_event, std::vector<ze_event_handle_t*> input_events, uint32_t input_event_count, int number_of_threads, int input_size); 
     void submit_kernel_to_cmd_list(ze_kernel_handle_t& _kernel, std::vector<void*> input, void* output, ze_event_handle_t output_event, std::vector<ze_event_handle_t*> input_events, uint32_t input_event_count, int counter, int number_of_threads, int input_size );
@@ -65,13 +68,16 @@ private:
     static bool ze_initalized;
     bool log;
     bool multi_ccs;
-    void* input1_buffer = nullptr, * input2_buffer = nullptr,* im_buf1 = nullptr, * im_buf2 = nullptr, * im_buf3 = nullptr, * im_buf4 = nullptr, * im_buf5 = nullptr, * im_buf6 = nullptr;
-    void* output_buffer = nullptr;
+    void* input1_buffer = nullptr, * input2_buffer = nullptr, * mem_input1_buffer = nullptr, * mem_input2_buffer = nullptr, * im_buf1 = nullptr, * im_buf2 = nullptr, * im_buf3 = nullptr, * im_buf4 = nullptr, * im_buf5 = nullptr, * im_buf6 = nullptr;
+    void* output_buffer = nullptr, * mem_output_buffer = nullptr, * mem_output_buffer2 = nullptr;
     ze_host_mem_alloc_desc_t hostDesc = { ZE_STRUCTURE_TYPE_HOST_MEM_ALLOC_DESC };
     
     std::vector<uint8_t>* input1;
     std::vector<uint8_t>* input2;
     std::vector<uint8_t>* output;
+    std::vector<uint8_t>* mem_input1;
+    std::vector<uint8_t>* mem_input2;
+    std::vector<uint8_t>* mem_output;
     gpu_results gpu_result;
     int id, ccs_id;
     ze_result_t result = ZE_RESULT_SUCCESS;

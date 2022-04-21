@@ -84,7 +84,7 @@ int main(int argc, const char** argv) {
     disable_blitter = false;
     compute_bound_kernel_multiplier = 1.0;
     number_of_threads = 32;
-    memory_used_by_mem_bound_kernel = 4;
+    memory_used_by_mem_bound_kernel = 1;
     input_size = number_of_threads;
 
     for (int i = 1; i < argc; i++)
