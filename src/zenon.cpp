@@ -586,7 +586,7 @@ gpu_results zenon::run(uint32_t clinet_id)
         gpu_result.execuction_time = 0;
         uint64_t timerResolution = devProperties.timerResolution;
         uint64_t kernelDuration = 0;
-        for (int i = 0; i < graph_event_count; i++)
+        for (int i = 0; i < graph_event_count - 2; i++)
         {
             SUCCESS_OR_TERMINATE(zeEventQueryKernelTimestamp(kernel_ts_event[i], &kernel_ts_results[i]));
             kernelDuration = (kernel_ts_results[i].context.kernelEnd - kernel_ts_results[i].context.kernelStart) * timerResolution;
