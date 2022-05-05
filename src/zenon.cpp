@@ -577,7 +577,7 @@ gpu_results zenon::run(uint32_t clinet_id)
         SUCCESS_OR_TERMINATE(zeCommandQueueExecuteCommandLists(output_copy_command_queue, 1, &output_copy_command_list, nullptr));
         SUCCESS_OR_TERMINATE(zeCommandQueueSynchronize(output_copy_command_queue, UINT64_MAX));
     }
-    if (profiling)
+    if (profiling && !single_thread)
     {
         ze_device_properties_t devProperties = { ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES };
         SUCCESS_OR_TERMINATE(zeDeviceGetProperties(device, &devProperties));
@@ -672,6 +672,26 @@ gpu_results zenon::get_result( uint32_t clinet_id )
     return gpu_result;
 }
 
+void zenon::set_timestamps() {
+    ze_device_properties_t devProperties = { ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES };
+    SUCCESS_OR_TERMINATE(zeDeviceGetProperties(device, &devProperties));
+
+    gpu_result.kernel_time.clear();
+    gpu_result.execuction_time = 0;
+    uint64_t timerResolution = devProperties.timerResolution;
+    uint64_t kernelDuration = 0;
+    for (int i = 0; i < graph_event_count - 2; i++)
+    {
+        SUCCESS_OR_TERMINATE(zeEventQueryKernelTimestamp(kernel_ts_event[i], &kernel_ts_results[i]));
+        kernelDuration = (kernel_ts_results[i].context.kernelEnd - kernel_ts_results[i].context.kernelStart) * timerResolution;
+        gpu_result.kernel_name.push_back(kernel_names.at(i));
+        gpu_result.kernel_time.push_back(kernelDuration);
+        gpu_result.execuction_time += kernelDuration;
+    }
+    gpu_result.kernels_start_time = kernel_ts_results[0].context.kernelStart * timerResolution;
+    gpu_result.kernels_end_time = kernel_ts_results[graph_event_count - 3].context.kernelStart * timerResolution;
+    gpu_result.gpu_time = (kernel_ts_results[graph_event_count - 3].context.kernelEnd - kernel_ts_results[0].context.kernelStart) * timerResolution;
+}
 
 bool zenon::ze_initalized = false;
 std::vector<ze_driver_handle_t> zenon::drivers;
