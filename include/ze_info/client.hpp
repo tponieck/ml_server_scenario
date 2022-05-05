@@ -153,6 +153,8 @@ public:
             {
                 if( serv.is_finished( cntr, zenonki[ cntr ] ) )
                 {
+                    zenonki[cntr]->set_timestamps();
+                    
                     serv.get_result( cntr, zenonki[ cntr ] );
                     finish_count++;
                     if( q < queries )
@@ -211,41 +213,84 @@ public:
 
     void print_profiling()
     {
-        auto kernels_count = gpu_results_vec.at(0).kernel_time.size();
-        std::vector<uint64_t> total_exec_time;
+        int kernels_count;
+        if (!single_thread) {
+            kernels_count = gpu_results_vec.at(0).kernel_time.size();
+            std::vector<uint64_t> total_exec_time;
 
-        for (int j = 0; j < kernels_count; j++)
-        {
-            std::vector<uint64_t> kernel_exec_times;
-            for (int i = 0; i < gpu_results_vec.size(); i++)
+            for (int j = 0; j < kernels_count; j++)
             {
-                kernel_exec_times.push_back(gpu_results_vec.at(i).kernel_time.at(j));
-                if (j == 0)
-                    total_exec_time.push_back(gpu_results_vec.at(i).execuction_time);
+                std::vector<uint64_t> kernel_exec_times;
+                for (int i = 0; i < gpu_results_vec.size(); i++)
+                {
+                    kernel_exec_times.push_back(gpu_results_vec.at(i).kernel_time.at(j));
+                    if (j == 0) {
+                        total_exec_time.push_back(gpu_results_vec.at(i).execuction_time);
+                    }
+                }
+                uint64_t kernel_max = *std::max_element(kernel_exec_times.begin(), kernel_exec_times.end());
+                uint64_t kernel_min = *std::min_element(kernel_exec_times.begin(), kernel_exec_times.end());
+                double kernel_avg_v = avg_u(kernel_exec_times);
+                std::cout << "kernel " << j << "\t" << gpu_results_vec.at(0).kernel_name.at(j) << ":\tMin: " << kernel_min << " ns\t" << "Max: " << kernel_max << " ns\t" << "Avg: " << kernel_avg_v << " ns \n";
             }
-            uint64_t kernel_max = *std::max_element(kernel_exec_times.begin(), kernel_exec_times.end());
-            uint64_t kernel_min = *std::min_element(kernel_exec_times.begin(), kernel_exec_times.end());
-            double kernel_avg_v = avg_u(kernel_exec_times);
-            std::cout << "kernel " << j << " " << gpu_results_vec.at(0).kernel_name.at(j) << ": Min: " << kernel_min << " ns \t" << "Max: " << kernel_max << " ns \t" << "Avg: " << kernel_avg_v << " ns \n";
-        }
-        uint64_t kernels_starts = gpu_results_vec.at(0).kernels_start_time;
-        uint64_t kernels_ends = 0;
-        for (int i = 0; i < gpu_results_vec.size(); i++) {
-            if (kernels_ends < gpu_results_vec.at(i).kernels_end_time)
-                kernels_ends = gpu_results_vec.at(i).kernels_end_time;
-        }
-        uint64_t gpu_max = *std::max_element(total_exec_time.begin(), total_exec_time.end()) / 1000;
-        uint64_t gpu_min = *std::min_element(total_exec_time.begin(), total_exec_time.end()) / 1000;
-        double gpu_avg_v = avg_u(total_exec_time) / 1000;
+            uint64_t kernels_starts = gpu_results_vec.at(0).kernels_start_time;
+            uint64_t kernels_ends = 0;
+            for (int i = 0; i < gpu_results_vec.size(); i++) {
+                if (kernels_ends < gpu_results_vec.at(i).kernels_end_time)
+                    kernels_ends = gpu_results_vec.at(i).kernels_end_time;
+            }
+            uint64_t gpu_max = *std::max_element(total_exec_time.begin(), total_exec_time.end()) / 1000;
+            uint64_t gpu_min = *std::min_element(total_exec_time.begin(), total_exec_time.end()) / 1000;
+            double gpu_avg_v = avg_u(total_exec_time) / 1000;
 
-        total_gpu_time = get_total_gpu_time_vec(gpu_results_vec);
-        uint64_t total_gpu_max = *std::max_element(total_gpu_time.begin(), total_gpu_time.end()) / 1000; //1st kernel start -> last kernel end max
-        uint64_t total_gpu_min = *std::min_element(total_gpu_time.begin(), total_gpu_time.end()) / 1000; //1st kernel start -> last kernel end min
-        double total_gpu_avg = avg_u(total_gpu_time) / 1000; //1st kernel start -> last kernel end avg
-        std::cout << "\nTime from 1st kernel start to last kernel end\t" << (kernels_ends - kernels_starts) / 1000 << " us \n\n";
-        std::cout << "Total kernels time: Min: " << gpu_min << " us\t\t Max: " << gpu_max << " us \t\t Avg: " << gpu_avg_v << " us \n";
-        std::cout << "Total GPU time:     Min: " << total_gpu_min << " us\t\t Max: " << total_gpu_max << " us \t\t Avg: " << total_gpu_avg << " us \n";
-        
+            total_gpu_time = get_total_gpu_time_vec(gpu_results_vec);
+            uint64_t total_gpu_max = *std::max_element(total_gpu_time.begin(), total_gpu_time.end()) / 1000; //1st kernel start -> last kernel end max
+            uint64_t total_gpu_min = *std::min_element(total_gpu_time.begin(), total_gpu_time.end()) / 1000; //1st kernel start -> last kernel end min
+            double total_gpu_avg = avg_u(total_gpu_time) / 1000; //1st kernel start -> last kernel end avg
+            std::cout << "\nTime from 1st kernel start to last kernel end\t" << (kernels_ends - kernels_starts) / 1000 << " us \n\n";
+            std::cout << "Total kernels time: Min: " << gpu_min << " us\t\t Max: " << gpu_max << " us \t\t Avg: " << gpu_avg_v << " us \n";
+            std::cout << "Total GPU time:     Min: " << total_gpu_min << " us\t\t Max: " << total_gpu_max << " us \t\t Avg: " << total_gpu_avg << " us \n";
+
+
+        }
+        else {
+            kernels_count = zenonki[0]->get_result(0).kernel_time.size();
+            std::vector<uint64_t> total_exec_time;
+
+            for (int j = 0; j < kernels_count; j++)
+            {
+                std::vector<uint64_t> kernel_exec_times;
+                for (int i = 0; i < zenonki.size(); i++)
+                {
+                    kernel_exec_times.push_back(zenonki[i]->get_result(j).kernel_time.at(j));
+                    if (j == 0) {
+                        total_exec_time.push_back(zenonki[i]->get_result(j).execuction_time);
+                    }
+                }
+                uint64_t kernel_max = *std::max_element(kernel_exec_times.begin(), kernel_exec_times.end());
+                uint64_t kernel_min = *std::min_element(kernel_exec_times.begin(), kernel_exec_times.end());
+                double kernel_avg_v = avg_u(kernel_exec_times);
+                std::cout << "kernel " << j << "\t" << zenonki[0]->get_result(j).kernel_name.at(j) << ":\tMin: " << kernel_min << " ns\t" << "Max: " << kernel_max << " ns\t" << "Avg: " << kernel_avg_v << " ns \n";
+            }
+            uint64_t kernels_starts = zenonki[0]->get_result(0).kernels_start_time;
+            uint64_t kernels_ends = 0;
+            for (int i = 0; i < zenonki.size(); i++) {
+                if (kernels_ends < zenonki[i]->get_result(i).kernels_end_time)
+                    kernels_ends = zenonki[i]->get_result(i).kernels_end_time;
+            }
+            uint64_t gpu_max = *std::max_element(total_exec_time.begin(), total_exec_time.end()) / 1000;
+            uint64_t gpu_min = *std::min_element(total_exec_time.begin(), total_exec_time.end()) / 1000;
+            double gpu_avg_v = avg_u(total_exec_time) / 1000;
+
+            total_gpu_time = get_total_gpu_time_vec(gpu_results_vec);
+            uint64_t total_gpu_max = *std::max_element(total_gpu_time.begin(), total_gpu_time.end()) / 1000; //1st kernel start -> last kernel end max
+            uint64_t total_gpu_min = *std::min_element(total_gpu_time.begin(), total_gpu_time.end()) / 1000; //1st kernel start -> last kernel end min
+            double total_gpu_avg = avg_u(total_gpu_time) / 1000; //1st kernel start -> last kernel end avg
+            std::cout << "\nTime from 1st kernel start to last kernel end\t" << (kernels_ends - kernels_starts) / 1000 << " us \n\n";
+            std::cout << "Total kernels time: Min: " << gpu_min << " us\t\t Max: " << gpu_max << " us \t\t Avg: " << gpu_avg_v << " us \n";
+            std::cout << "Total GPU time:     Min: " << total_gpu_min << " us\t\t Max: " << total_gpu_max << " us \t\t Avg: " << total_gpu_avg << " us \n";
+
+        }
     }
 
     double avg(std::vector<double> const& v)

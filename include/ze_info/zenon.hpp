@@ -63,6 +63,7 @@ public:
     void init();
     int get_id() { return id; };
     int get_ccs_id() { return ccs_id; };
+    void set_timestamps();
 
 private:
     static bool ze_initalized;

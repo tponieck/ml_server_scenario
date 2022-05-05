@@ -72,7 +72,7 @@ public:
         std::vector<uint8_t>* mem_in2 = zenek->get_mem_input2();
         std::fill(mem_in1->begin(), mem_in1->end(), id);
         std::fill(mem_in2->begin(), mem_in2->end(), id - 1);
-        zenek->run( id );
+        gpu_results gpu_result = zenek->run( id );
         int ccs_id = zenek->get_ccs_id();
         log("sample id:", id);
         log("will use zenek no:", zen_id);
