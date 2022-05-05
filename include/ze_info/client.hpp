@@ -137,7 +137,15 @@ public:
             high_resolution_clock::time_point current = high_resolution_clock::now();
             for( ; q < pool_size; q++ )
             {
+                high_resolution_clock::time_point start_time = high_resolution_clock::now();
                 zenonki[ q ] = serv.query_sample( q );
+                high_resolution_clock::time_point end_time = high_resolution_clock::now();
+                std::chrono::duration<double, std::micro> ms = end_time - start_time;
+                if (logging)
+                    std::cout << "thread:" << q << " duration: " << ms.count() << std::endl;
+
+                results[q] = ms.count();
+
                 if( q + 1 < queries )
                 {
                     cumulative_dist += dist[ q ];
@@ -159,7 +167,14 @@ public:
                     finish_count++;
                     if( q < queries )
                     {
+                        high_resolution_clock::time_point start_time = high_resolution_clock::now();
                         zenonki[ cntr ] = serv.query_sample( q++ );
+                        high_resolution_clock::time_point end_time = high_resolution_clock::now();
+                        std::chrono::duration<double, std::micro> ms = end_time - start_time;
+                        if (logging)
+                            std::cout << "thread:" << q << " duration: " << ms.count() << std::endl;
+
+                        results[q] = ms.count();
                         if( q < queries )
                         {
                             cumulative_dist += dist[ q ];
@@ -282,7 +297,7 @@ public:
             uint64_t gpu_min = *std::min_element(total_exec_time.begin(), total_exec_time.end()) / 1000;
             double gpu_avg_v = avg_u(total_exec_time) / 1000;
 
-            total_gpu_time = get_total_gpu_time_vec(gpu_results_vec);
+            total_gpu_time = get_total_gpu_time_vec_from_zenonki(zenonki);
             uint64_t total_gpu_max = *std::max_element(total_gpu_time.begin(), total_gpu_time.end()) / 1000; //1st kernel start -> last kernel end max
             uint64_t total_gpu_min = *std::min_element(total_gpu_time.begin(), total_gpu_time.end()) / 1000; //1st kernel start -> last kernel end min
             double total_gpu_avg = avg_u(total_gpu_time) / 1000; //1st kernel start -> last kernel end avg
@@ -311,6 +326,15 @@ public:
         }
         return total_gpu_time_vec;
     }
+    std::vector<uint64_t> get_total_gpu_time_vec_from_zenonki(std::vector<zenon*> v)
+    {
+        std::vector<uint64_t> total_gpu_time_vec;
+        for (int i = 0; i < v.size(); i++) {
+            total_gpu_time_vec.push_back(v.at(i)->get_result(i).gpu_time);
+        }
+        return total_gpu_time_vec;
+    }
+
 
     void print_results()
     {
