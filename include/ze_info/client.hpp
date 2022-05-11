@@ -135,17 +135,11 @@ public:
             std::chrono::duration<double, std::micro> differ;
             high_resolution_clock::time_point dist_start_time = high_resolution_clock::now();
             high_resolution_clock::time_point current = high_resolution_clock::now();
+            high_resolution_clock::time_point start = high_resolution_clock::now();
             for( ; q < pool_size; q++ )
             {
-                high_resolution_clock::time_point start_time = high_resolution_clock::now();
                 zenonki[ q ] = serv.query_sample( q );
-                high_resolution_clock::time_point end_time = high_resolution_clock::now();
-                std::chrono::duration<double, std::micro> ms = end_time - start_time;
-                if (logging)
-                    std::cout << "thread:" << q << " duration: " << ms.count() << std::endl;
-
-                results[q] = ms.count();
-
+                
                 if( q + 1 < queries )
                 {
                     cumulative_dist += dist[ q ];
@@ -154,6 +148,7 @@ public:
                     std::chrono::duration<double, std::micro> diff = cumulative_dist - differ;
                     std::this_thread::sleep_for( diff );
                 }
+               
             }
 
             int cntr = 0, finish_count = 0;
@@ -161,20 +156,19 @@ public:
             {
                 if( serv.is_finished( cntr, zenonki[ cntr ] ) )
                 {
+                    high_resolution_clock::time_point end_time = high_resolution_clock::now();
+                    std::chrono::duration<double, std::micro> ms = end_time - start;
+                    if (logging)
+                        std::cout << "thread:" << q << " duration: " << ms.count() << std::endl;
+
+                    results[cntr] = ms.count();
                     zenonki[cntr]->set_timestamps();
                     
                     serv.get_result( cntr, zenonki[ cntr ] );
                     finish_count++;
                     if( q < queries )
                     {
-                        high_resolution_clock::time_point start_time = high_resolution_clock::now();
                         zenonki[ cntr ] = serv.query_sample( q++ );
-                        high_resolution_clock::time_point end_time = high_resolution_clock::now();
-                        std::chrono::duration<double, std::micro> ms = end_time - start_time;
-                        if (logging)
-                            std::cout << "thread:" << q << " duration: " << ms.count() << std::endl;
-
-                        results[q] = ms.count();
                         if( q < queries )
                         {
                             cumulative_dist += dist[ q ];
